@@ -5,11 +5,12 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Length, EqualTo
 from passlib.hash import pbkdf2_sha256
-import os
+from datetime import datetime
+import json
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data.db'
+app.config['SECRET_KEY'] = 'your-secret-key'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///larvae.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -31,12 +32,10 @@ class User(UserMixin, db.Model):
 class TrayData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tray_number = db.Column(db.Integer, nullable=False)
-    length = db.Column(db.Float)
-    width = db.Column(db.Float)
-    area = db.Column(db.Float)
-    weight = db.Column(db.Float)
-    count = db.Column(db.Integer)
-    timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+    metrics = db.Column(db.JSON)
+    growth_data = db.Column(db.JSON)
+    weight_distribution = db.Column(db.JSON)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Forms
 class LoginForm(FlaskForm):
@@ -83,34 +82,39 @@ def register():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    tray_numbers = [1, 2, 3]
-    tray_data = {}
-    for tray in tray_numbers:
-        latest_entry = TrayData.query.filter_by(tray_number=tray).order_by(TrayData.timestamp.desc()).first()
-        tray_data[tray] = latest_entry
-    return render_template('dashboard.html', tray_data=tray_data)
+    tray_data = TrayData.query.order_by(TrayData.timestamp.desc()).first()
+    return render_template('dashboard.html', timestamp=tray_data.timestamp if tray_data else None)
 
-@app.route('/logout')
-def logout():
-    logout_user()
-    return redirect(url_for('login'))
+@app.route('/get_tray_data/<int:tray_number>')
+@login_required
+def get_tray_data(tray_number):
+    tray_data = TrayData.query.filter_by(tray_number=tray_number).order_by(TrayData.timestamp.desc()).first()
+    return jsonify({
+        'metrics': tray_data.metrics,
+        'growthData': tray_data.growth_data,
+        'weightDistribution': tray_data.weight_distribution,
+        'timestamp': tray_data.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+    }) if tray_data else jsonify({})
 
 @app.route('/api/data', methods=['POST'])
 def receive_data():
     data = request.json
     new_entry = TrayData(
         tray_number=data['tray_number'],
-        length=data['length'],
-        width=data['width'],
-        area=data['area'],
-        weight=data['weight'],
-        count=data['count']
+        metrics=data['metrics'],
+        growth_data=data['growth_data'],
+        weight_distribution=data['weight_distribution']
     )
     db.session.add(new_entry)
     db.session.commit()
     return jsonify({"message": "Data received"}), 201
 
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True)

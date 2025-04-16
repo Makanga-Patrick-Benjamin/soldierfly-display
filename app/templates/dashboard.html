@@ -173,219 +173,47 @@
         </div>
     </div>
 
-    <script>
-        // Sample data for different trays
-        const trayData = {
-            1: {
-                metrics: {
-                    length: 12.8,
-                    width: 3.2,
-                    area: 41.0,
-                    weight: 118.3,
-                    count: 1248
-                },
-                growthData: {
-                    days: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-                    length: [5.2, 6.8, 8.1, 9.3, 10.5, 11.2, 11.8, 12.3, 12.6, 12.8],
-                    weight: [25.6, 42.1, 58.4, 74.9, 89.5, 98.6, 105.2, 112.3, 116.7, 118.3]
-                },
-                weightDistribution: {
-                    ranges: ["80-90", "90-100", "100-110", "110-120", "120-130", "130-140", "140+"],
-                    counts: [42, 123, 348, 456, 198, 67, 14]
-                }
-            },
-            2: {
-                metrics: {
-                    length: 11.5,
-                    width: 2.9,
-                    area: 33.4,
-                    weight: 102.7,
-                    count: 1345
-                },
-                growthData: {
-                    days: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-                    length: [4.8, 6.2, 7.5, 8.6, 9.4, 10.1, 10.6, 11.0, 11.3, 11.5],
-                    weight: [22.3, 36.5, 49.8, 64.2, 78.6, 87.5, 94.3, 98.9, 101.2, 102.7]
-                },
-                weightDistribution: {
-                    ranges: ["70-80", "80-90", "90-100", "100-110", "110-120", "120-130", "130+"],
-                    counts: [76, 213, 398, 412, 176, 58, 12]
-                }
-            },
-            3: {
-                metrics: {
-                    length: 13.6,
-                    width: 3.4,
-                    area: 46.2,
-                    weight: 126.9,
-                    count: 1187
-                },
-                growthData: {
-                    days: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-                    length: [5.5, 7.2, 8.9, 10.1, 11.2, 12.0, 12.7, 13.2, 13.5, 13.6],
-                    weight: [27.2, 45.6, 64.8, 82.3, 97.5, 108.2, 117.6, 123.1, 125.8, 126.9]
-                },
-                weightDistribution: {
-                    ranges: ["90-100", "100-110", "110-120", "120-130", "130-140", "140-150", "150+"],
-                    counts: [35, 102, 287, 425, 228, 92, 18]
-                }
-            }
-        };
+<!-- Keep all original HTML structure and styles -->
+<!-- Replace script section with: -->
+<script>
+    let growthChart, weightChart;
 
-        // Initialize charts
-        let growthChart;
-        let weightChart;
+    async function updateDashboard(trayNumber) {
+        const response = await fetch(`/get_tray_data/${trayNumber}`);
+        const data = await response.json();
+        
+        // Update metrics
+        document.getElementById('length').innerHTML = data.metrics.length + ' <span class="unit">mm</span>';
+        document.getElementById('width').innerHTML = data.metrics.width + ' <span class="unit">mm</span>';
+        document.getElementById('area').innerHTML = data.metrics.area + ' <span class="unit">mm²</span>';
+        document.getElementById('weight').innerHTML = data.metrics.weight + ' <span class="unit">mg</span>';
+        document.getElementById('count').innerHTML = data.metrics.count.toLocaleString();
+        document.getElementById('update-time').textContent = data.timestamp;
 
-        // Function to update the dashboard with tray data
-        function updateDashboard(trayNumber) {
-            const data = trayData[trayNumber];
-            
-            // Update metrics
-            document.getElementById('length').innerHTML = data.metrics.length + ' <span class="unit">mm</span>';
-            document.getElementById('width').innerHTML = data.metrics.width + ' <span class="unit">mm</span>';
-            document.getElementById('area').innerHTML = data.metrics.area + ' <span class="unit">mm²</span>';
-            document.getElementById('weight').innerHTML = data.metrics.weight + ' <span class="unit">mg</span>';
-            document.getElementById('count').innerHTML = data.metrics.count.toLocaleString();
-            
-            // Update charts
-            updateGrowthChart(data.growthData);
-            updateWeightChart(data.weightDistribution);
-            
-            // Update tray buttons
-            const buttons = document.querySelectorAll('.tray-btn');
-            buttons.forEach((btn, index) => {
-                if (index + 1 === trayNumber) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-        }
+        // Update charts
+        updateGrowthChart(data.growthData);
+        updateWeightChart(data.weightDistribution);
         
-        // Function to switch between trays
-        function switchTray(trayNumber) {
-            updateDashboard(trayNumber);
-        }
-        
-        // Function to update growth trend chart
-        function updateGrowthChart(data) {
-            const ctx = document.getElementById('growthChart').getContext('2d');
-            
-            if (growthChart) {
-                growthChart.destroy();
-            }
-            
-            growthChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.days.map(day => `Day ${day}`),
-                    datasets: [
-                        {
-                            label: 'Length (mm)',
-                            data: data.length,
-                            borderColor: '#3498db',
-                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                            borderWidth: 3,
-                            tension: 0.3,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'Weight (mg)',
-                            data: data.weight,
-                            borderColor: '#e74c3c',
-                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                            borderWidth: 3,
-                            tension: 0.3,
-                            yAxisID: 'y1'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    scales: {
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Length (mm)'
-                            }
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: 'Weight (mg)'
-                            },
-                            grid: {
-                                drawOnChartArea: false,
-                            },
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Days'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Function to update weight distribution chart
-        function updateWeightChart(data) {
-            const ctx = document.getElementById('weightChart').getContext('2d');
-            
-            if (weightChart) {
-                weightChart.destroy();
-            }
-            
-            weightChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: data.ranges.map(range => `${range} mg`),
-                    datasets: [
-                        {
-                            label: 'Number of larvae',
-                            data: data.counts,
-                            backgroundColor: 'rgba(46, 204, 113, 0.7)',
-                            borderColor: 'rgba(39, 174, 96, 1)',
-                            borderWidth: 1
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Count'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Weight Range'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Initialize dashboard with Tray 1 data
-        document.addEventListener('DOMContentLoaded', () => {
-            updateDashboard(1);
-        });
-    </script>
+        // Update active tray button
+        document.querySelectorAll('.tray-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.tray-btn:nth-child(${trayNumber})`).classList.add('active');
+    }
+
+    // Modified chart update functions to use fetched data
+    function updateGrowthChart(data) {
+        const ctx = document.getElementById('growthChart').getContext('2d');
+        if (growthChart) growthChart.destroy();
+        // Keep original chart creation code
+    }
+
+    function updateWeightChart(data) {
+        const ctx = document.getElementById('weightChart').getContext('2d');
+        if (weightChart) weightChart.destroy();
+        // Keep original chart creation code
+    }
+
+    // Initialize with first tray
+    document.addEventListener('DOMContentLoaded', () => updateDashboard(1));
+</script>
 </body>
 </html>
