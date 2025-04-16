@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soldier Fly Larvae Monitoring Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .tray-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tray-btn {
+            padding: 10px 20px;
+            background-color: #ecf0f1;
+            border: 2px solid #bdc3c7;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .tray-btn.active {
+            background-color: #27ae60;
+            color: white;
+            border-color: #27ae60;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .metric-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #2c3e50;
+        }
+        
+        .metric-label {
+            color: #7f8c8d;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        
+        .unit {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .chart-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+        }
+        
+        .chart-title {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 18px;
+            text-align: center;
+        }
+        
+        .update-time {
+            font-size: 14px;
+            color: #7f8c8d;
+            text-align: right;
+        }
+        
+        @media (max-width: 768px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Soldier Fly Larvae Monitoring Dashboard</h1>
+            <div class="update-time">Last updated: <span id="update-time">April 3, 2025 10:32 AM</span></div>
+        </header>
+        
+        <div class="tray-selector">
+            <button class="tray-btn active" onclick="switchTray(1)">Tray #1</button>
+            <button class="tray-btn" onclick="switchTray(2)">Tray #2</button>
+            <button class="tray-btn" onclick="switchTray(3)">Tray #3</button>
+        </div>
+        
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Average Length</div>
+                <div class="metric-value" id="length">12.8 <span class="unit">mm</span></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Average Width</div>
+                <div class="metric-value" id="width">3.2 <span class="unit">mm</span></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Average Area</div>
+                <div class="metric-value" id="area">41.0 <span class="unit">mm²</span></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Average Weight</div>
+                <div class="metric-value" id="weight">118.3 <span class="unit">mg</span></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Total Count</div>
+                <div class="metric-value" id="count">1,248</div>
+            </div>
+        </div>
+        
+        <div class="charts-container">
+            <div class="chart-container">
+                <h3 class="chart-title">Growth Trend (Over Days)</h3>
+                <canvas id="growthChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">Weight Distribution</h3>
+                <canvas id="weightChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data for different trays
+        const trayData = {
+            1: {
+                metrics: {
+                    length: 12.8,
+                    width: 3.2,
+                    area: 41.0,
+                    weight: 118.3,
+                    count: 1248
+                },
+                growthData: {
+                    days: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                    length: [5.2, 6.8, 8.1, 9.3, 10.5, 11.2, 11.8, 12.3, 12.6, 12.8],
+                    weight: [25.6, 42.1, 58.4, 74.9, 89.5, 98.6, 105.2, 112.3, 116.7, 118.3]
+                },
+                weightDistribution: {
+                    ranges: ["80-90", "90-100", "100-110", "110-120", "120-130", "130-140", "140+"],
+                    counts: [42, 123, 348, 456, 198, 67, 14]
+                }
+            },
+            2: {
+                metrics: {
+                    length: 11.5,
+                    width: 2.9,
+                    area: 33.4,
+                    weight: 102.7,
+                    count: 1345
+                },
+                growthData: {
+                    days: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                    length: [4.8, 6.2, 7.5, 8.6, 9.4, 10.1, 10.6, 11.0, 11.3, 11.5],
+                    weight: [22.3, 36.5, 49.8, 64.2, 78.6, 87.5, 94.3, 98.9, 101.2, 102.7]
+                },
+                weightDistribution: {
+                    ranges: ["70-80", "80-90", "90-100", "100-110", "110-120", "120-130", "130+"],
+                    counts: [76, 213, 398, 412, 176, 58, 12]
+                }
+            },
+            3: {
+                metrics: {
+                    length: 13.6,
+                    width: 3.4,
+                    area: 46.2,
+                    weight: 126.9,
+                    count: 1187
+                },
+                growthData: {
+                    days: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                    length: [5.5, 7.2, 8.9, 10.1, 11.2, 12.0, 12.7, 13.2, 13.5, 13.6],
+                    weight: [27.2, 45.6, 64.8, 82.3, 97.5, 108.2, 117.6, 123.1, 125.8, 126.9]
+                },
+                weightDistribution: {
+                    ranges: ["90-100", "100-110", "110-120", "120-130", "130-140", "140-150", "150+"],
+                    counts: [35, 102, 287, 425, 228, 92, 18]
+                }
+            }
+        };
+
+        // Initialize charts
+        let growthChart;
+        let weightChart;
+
+        // Function to update the dashboard with tray data
+        function updateDashboard(trayNumber) {
+            const data = trayData[trayNumber];
+            
+            // Update metrics
+            document.getElementById('length').innerHTML = data.metrics.length + ' <span class="unit">mm</span>';
+            document.getElementById('width').innerHTML = data.metrics.width + ' <span class="unit">mm</span>';
+            document.getElementById('area').innerHTML = data.metrics.area + ' <span class="unit">mm²</span>';
+            document.getElementById('weight').innerHTML = data.metrics.weight + ' <span class="unit">mg</span>';
+            document.getElementById('count').innerHTML = data.metrics.count.toLocaleString();
+            
+            // Update charts
+            updateGrowthChart(data.growthData);
+            updateWeightChart(data.weightDistribution);
+            
+            // Update tray buttons
+            const buttons = document.querySelectorAll('.tray-btn');
+            buttons.forEach((btn, index) => {
+                if (index + 1 === trayNumber) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+        
+        // Function to switch between trays
+        function switchTray(trayNumber) {
+            updateDashboard(trayNumber);
+        }
+        
+        // Function to update growth trend chart
+        function updateGrowthChart(data) {
+            const ctx = document.getElementById('growthChart').getContext('2d');
+            
+            if (growthChart) {
+                growthChart.destroy();
+            }
+            
+            growthChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.days.map(day => `Day ${day}`),
+                    datasets: [
+                        {
+                            label: 'Length (mm)',
+                            data: data.length,
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Weight (mg)',
+                            data: data.weight,
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Length (mm)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Weight (mg)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Days'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Function to update weight distribution chart
+        function updateWeightChart(data) {
+            const ctx = document.getElementById('weightChart').getContext('2d');
+            
+            if (weightChart) {
+                weightChart.destroy();
+            }
+            
+            weightChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.ranges.map(range => `${range} mg`),
+                    datasets: [
+                        {
+                            label: 'Number of larvae',
+                            data: data.counts,
+                            backgroundColor: 'rgba(46, 204, 113, 0.7)',
+                            borderColor: 'rgba(39, 174, 96, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Count'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Weight Range'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize dashboard with Tray 1 data
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDashboard(1);
+        });
+    </script>
+</body>
+</html>
