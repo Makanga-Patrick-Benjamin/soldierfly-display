@@ -33,5 +33,15 @@ A web-based dashboard for real-time monitoring of soldier fly larvae growth metr
    ```bash
    git clone https://github.com/Makanga-Patrick-Benjamin/soldierfly-display.git
    cd soldierfly-monitoring
+   pip install -r requirements.txt
 
-   
+2. **On linux to run the website**:
+```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    python3 app.py
+
+3. **Default credentials:**:
+    user name: admin
+    password: admin123
+
