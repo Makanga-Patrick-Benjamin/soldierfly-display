@@ -173,47 +173,162 @@
         </div>
     </div>
 
-<!-- Keep all original HTML structure and styles -->
-<!-- Replace script section with: -->
-<script>
-    let growthChart, weightChart;
+    <script>
+        // Initialize charts
+        let growthChart;
+        let weightChart;
 
-    async function updateDashboard(trayNumber) {
-        const response = await fetch(`/get_tray_data/${trayNumber}`);
-        const data = await response.json();
+        // Function to update the dashboard with tray data
         
-        // Update metrics
-        document.getElementById('length').innerHTML = data.metrics.length + ' <span class="unit">mm</span>';
-        document.getElementById('width').innerHTML = data.metrics.width + ' <span class="unit">mm</span>';
-        document.getElementById('area').innerHTML = data.metrics.area + ' <span class="unit">mm²</span>';
-        document.getElementById('weight').innerHTML = data.metrics.weight + ' <span class="unit">mg</span>';
-        document.getElementById('count').innerHTML = data.metrics.count.toLocaleString();
-        document.getElementById('update-time').textContent = data.timestamp;
-
-        // Update charts
-        updateGrowthChart(data.growthData);
-        updateWeightChart(data.weightDistribution);
+        async function updateDashboard(trayNumber) {
+        try {
+            const response = await fetch(`/get_tray_data/${trayNumber}`);
+            const data = await response.json();
+            
+            // Update metrics
+            document.getElementById('length').innerHTML = data.metrics.length.toFixed(1) + ' <span class="unit">mm</span>';
+            document.getElementById('width').innerHTML = data.metrics.width.toFixed(1) + ' <span class="unit">mm</span>';
+            document.getElementById('area').innerHTML = data.metrics.area.toFixed(1) + ' <span class="unit">mm²</span>';
+            document.getElementById('weight').innerHTML = data.metrics.weight.toFixed(1) + ' <span class="unit">mg</span>';
+            document.getElementById('count').innerHTML = data.metrics.count.toLocaleString();
+            document.getElementById('update-time').textContent = new Date(data.timestamp).toLocaleString();
+            
+            // Update charts
+            updateGrowthChart(data.growthData);
+            updateWeightChart(data.weightDistribution);
+            
+            // Update tray buttons
+            document.querySelectorAll('.tray-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.tray-btn:nth-child(${trayNumber})`).classList.add('active');
+        } catch (error) {
+            console.error('Error updating dashboard:', error);
+        }
+    }
         
-        // Update active tray button
-        document.querySelectorAll('.tray-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`.tray-btn:nth-child(${trayNumber})`).classList.add('active');
-    }
-
-    // Modified chart update functions to use fetched data
-    function updateGrowthChart(data) {
-        const ctx = document.getElementById('growthChart').getContext('2d');
-        if (growthChart) growthChart.destroy();
-        // Keep original chart creation code
-    }
-
-    function updateWeightChart(data) {
-        const ctx = document.getElementById('weightChart').getContext('2d');
-        if (weightChart) weightChart.destroy();
-        // Keep original chart creation code
-    }
-
-    // Initialize with first tray
-    document.addEventListener('DOMContentLoaded', () => updateDashboard(1));
-</script>
+        // Function to switch between trays
+        function switchTray(trayNumber) {
+            updateDashboard(trayNumber);
+        }
+        
+        // Function to update growth trend chart
+        function updateGrowthChart(data) {
+            const ctx = document.getElementById('growthChart').getContext('2d');
+            
+            if (growthChart) {
+                growthChart.destroy();
+            }
+            
+            growthChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.days.map(day => `Day ${day}`),
+                    datasets: [
+                        {
+                            label: 'Length (mm)',
+                            data: data.length,
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Weight (mg)',
+                            data: data.weight,
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Length (mm)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Weight (mg)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Days'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Function to update weight distribution chart
+        function updateWeightChart(data) {
+            const ctx = document.getElementById('weightChart').getContext('2d');
+            
+            if (weightChart) {
+                weightChart.destroy();
+            }
+            
+            weightChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.ranges.map(range => `${range} mg`),
+                    datasets: [
+                        {
+                            label: 'Number of larvae',
+                            data: data.counts,
+                            backgroundColor: 'rgba(46, 204, 113, 0.7)',
+                            borderColor: 'rgba(39, 174, 96, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Count'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Weight Range'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize dashboard with Tray 1 data
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDashboard(1);
+        });
+    </script>
 </body>
 </html>
