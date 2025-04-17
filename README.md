@@ -41,7 +41,7 @@ A web-based dashboard for real-time monitoring of soldier fly larvae growth metr
     source venv/bin/activate
     python3 app.py
 ```
-## 3. **Default credentials:**:
-    user name: admin
-    password: admin123
+## 3. **Default credentials:**
+- **user name:** admin
+- **password:** admin123
 
