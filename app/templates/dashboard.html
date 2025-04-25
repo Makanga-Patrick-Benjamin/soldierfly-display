@@ -128,7 +128,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>Soldier Fly Larvae Monitoring Dashboard</h1>
+            <h1>Black Soldier Fly Larvae Monitoring Dashboard</h1>
             <div class="update-time">Last updated: <span id="update-time">April 3, 2025 10:32 AM</span></div>
         </header>
         
@@ -291,7 +291,7 @@
             }
             
             weightChart = new Chart(ctx, {
-                type: 'bar',
+                type: 'line',
                 data: {
                     labels: data.ranges.map(range => `${range} mg`),
                     datasets: [
