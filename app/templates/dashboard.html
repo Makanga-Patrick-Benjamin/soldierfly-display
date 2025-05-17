@@ -136,6 +136,7 @@
             <button class="tray-btn active" onclick="switchTray(1)">Tray #1</button>
             <button class="tray-btn" onclick="switchTray(2)">Tray #2</button>
             <button class="tray-btn" onclick="switchTray(3)">Tray #3</button>
+            <button class="tray-btn" onclick="switchTray(0)">All Trays</button>
         </div>
         
         <div class="metrics-grid">
@@ -182,7 +183,11 @@
         
         async function updateDashboard(trayNumber) {
         try {
-            const response = await fetch(`/get_tray_data/${trayNumber}`);
+            const endpoint = trayNumber === 0 ? 
+            '/get_combined_tray_data' : 
+            `/get_tray_data/${trayNumber}`;
+            
+            const response = await fetch(endpoint);
             const data = await response.json();
             
             // Update metrics

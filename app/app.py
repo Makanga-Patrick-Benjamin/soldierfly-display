@@ -171,6 +171,77 @@ def get_tray_data(tray_number):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/get_combined_tray_data')
+@login_required
+def get_combined_tray_data():
+    try:
+        # Get data from all trays
+        tray1_data = LarvaeData.query.filter_by(tray_number=1).all()
+        tray2_data = LarvaeData.query.filter_by(tray_number=2).all()
+        tray3_data = LarvaeData.query.filter_by(tray_number=3).all()
+        
+        # Combine all data
+        all_data = tray1_data + tray2_data + tray3_data
+        
+        if not all_data:
+            return jsonify({"error": "No data found"}), 404
+
+        # Calculate combined metrics (averages)
+        latest_entries = [
+            get_latest_tray_data(1),
+            get_latest_tray_data(2),
+            get_latest_tray_data(3)
+        ]
+        
+        combined_metrics = {
+            "length": round(sum(e.length for e in latest_entries)/3, 1),
+            "width": round(sum(e.width for e in latest_entries)/3, 1),
+            "area": round(sum(e.area for e in latest_entries)/3, 1),
+            "weight": round(sum(e.weight for e in latest_entries)/3, 1),
+            "count": sum(e.count for e in latest_entries)
+        }
+
+        # Calculate combined growth data (by day)
+        growth_data = {"days": [], "length": [], "weight": []}
+        day_data = defaultdict(list)
+        
+        for entry in all_data:
+            day = (entry.timestamp.date() - all_data[0].timestamp.date()).days + 1
+            day_data[day].append(entry)
+        
+        for day, entries in sorted(day_data.items()):
+            growth_data["days"].append(day)
+            growth_data["length"].append(round(sum(e.length for e in entries)/len(entries), 1))
+            growth_data["weight"].append(round(sum(e.weight for e in entries)/len(entries), 1))
+
+        # Combined weight distribution
+        weight_bins = {
+            "80-90": 0, "90-100": 0, "100-110": 0,
+            "110-120": 0, "120-130": 0, "130-140": 0, "140+": 0
+        }
+        
+        for entry in all_data:
+            weight = entry.weight
+            if 80 <= weight < 90: weight_bins["80-90"] += 1
+            elif 90 <= weight < 100: weight_bins["90-100"] += 1
+            elif 100 <= weight < 110: weight_bins["100-110"] += 1
+            elif 110 <= weight < 120: weight_bins["110-120"] += 1
+            elif 120 <= weight < 130: weight_bins["120-130"] += 1
+            elif 130 <= weight < 140: weight_bins["130-140"] += 1
+            else: weight_bins["140+"] += 1
+
+        return jsonify({
+            "metrics": combined_metrics,
+            "growthData": growth_data,
+            "weightDistribution": {
+                "ranges": list(weight_bins.keys()),
+                "counts": list(weight_bins.values())
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
