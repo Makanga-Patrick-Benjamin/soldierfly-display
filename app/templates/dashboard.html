@@ -31,6 +31,19 @@
             align-items: center;
         }
 
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px; /* Space between logo and title */
+        }
+
+        .logo {
+            height: 50px; /* Adjust as needed */
+            width: auto;
+            border-radius: 50%; /* Optional: for a circular logo */
+            object-fit: cover; /* Ensures image covers the area */
+        }
+
         h1 {
             margin: 0;
             font-size: 24px;
@@ -165,7 +178,10 @@
 <body>
     <div class="container">
         <header>
-            <h1>Black Soldier Fly Larvae Monitoring Dashboard</h1>
+            <div class="header-left">
+                <img src="/static/blackflyLogo.jpeg" alt="Black Soldier Fly Logo" class="logo">
+                <h1>Black Soldier Fly Larvae Monitoring Dashboard</h1>
+            </div>
             <div class="update-time">Last updated: <span id="update-time"></span></div>
         </header>
 
