@@ -89,9 +89,6 @@ def register():
     
     return render_template('register.html')
 
-from datetime import datetime, timedelta
-from collections import defaultdict
-
 # Update the get_tray_data route
 @app.route('/get_tray_data/<int:tray_number>')
 @login_required
@@ -112,6 +109,9 @@ def get_tray_data(tray_number):
             "weight": []
         }
 
+        # Using a dictionary to keep track of the latest entry per day
+        daily_latest_data = {} # Key: day_number, Value: LarvaeData entry
+        
         if all_data:
             # Find the earliest timestamp as day 0
             start_date = all_data[0].timestamp.date()
@@ -129,7 +129,7 @@ def get_tray_data(tray_number):
                     # Update existing day with latest data
                     growth_data["length"][-1] = entry.length
                     growth_data["weight"][-1] = entry.weight
-
+                    
         # Get latest metrics
         latest = all_data[-1] if all_data else None
 
@@ -148,7 +148,7 @@ def get_tray_data(tray_number):
             elif 120 <= weight < 130: weight_bins["120-130"] += 1
             elif 130 <= weight < 140: weight_bins["130-140"] += 1
             else: weight_bins["140+"] += 1
-
+        
         return jsonify({
             "metrics": {
                 "length": latest.length,
@@ -166,7 +166,7 @@ def get_tray_data(tray_number):
                 "ranges": list(weight_bins.keys()),
                 "counts": list(weight_bins.values())
             },
-            "timestamp": latest.timestamp.isoformat()
+            "timestamp": latest.timestamp.isoformat() if latest else datetime.utcnow().isoformat()
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -240,6 +240,75 @@ def get_combined_tray_data():
             "timestamp": datetime.utcnow().isoformat()
         })
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Add this new route
+@app.route('/get_comparison_data')
+@login_required
+def get_comparison_data():
+    try:
+        trays_data_for_comparison = {}
+        # Iterate through each tray number you want to compare
+        for tray_num in [1, 2, 3]: # Assuming you have trays 1, 2, and 3
+            # Fetch all historical data for the current tray
+            all_tray_data = LarvaeData.query.filter_by(tray_number=tray_num)\
+                                          .order_by(LarvaeData.timestamp.asc())\
+                                          .all()
+
+            if not all_tray_data:
+                # If a tray has no data, skip it or include empty data for it
+                # For comparison, it's better to include it so frontend can show 'no data' or skip its line
+                trays_data_for_comparison[str(tray_num)] = {
+                    'latest': {'length': 0.0, 'width': 0.0, 'area': 0.0, 'weight': 0.0, 'count': 0},
+                    'growthData': {'days': [], 'length': [], 'weight': []},
+                    'allWeights': [] # Empty list for weight distribution if no data
+                }
+                continue # Move to the next tray
+
+            # --- Process Growth Data for this Tray ---
+            growth_data_for_tray = {
+                "days": [],
+                "length": [],
+                "weight": []
+            }
+            daily_latest_data = {} # Key: day_number, Value: LarvaeData entry
+
+            start_date = all_tray_data[0].timestamp.date()
+            for entry in all_tray_data:
+                day_number = (entry.timestamp.date() - start_date).days + 1
+                daily_latest_data[day_number] = entry # Overwrite with the latest entry for this day
+
+            for day in sorted(daily_latest_data.keys()):
+                entry = daily_latest_data[day]
+                growth_data_for_tray["days"].append(day)
+                growth_data_for_tray["length"].append(entry.length)
+                growth_data_for_tray["weight"].append(entry.weight)
+
+            # --- Process All Individual Weights for this Tray's Distribution ---
+            all_individual_weights = [entry.weight for entry in all_tray_data]
+
+            # --- Get Latest Metrics for this Tray ---
+            latest_entry = all_tray_data[-1]
+
+            trays_data_for_comparison[str(tray_num)] = {
+                'latest': {
+                    'length': latest_entry.length,
+                    'width': latest_entry.width,
+                    'area': latest_entry.area,
+                    'weight': latest_entry.weight,
+                    'count': latest_entry.count
+                },
+                'growthData': growth_data_for_tray,
+                'allWeights': all_individual_weights # This is the key for comparison weight distribution
+            }
+
+        return jsonify({
+            'trays': trays_data_for_comparison,
+            'timestamp': datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        # Log the error for debugging purposes
+        app.logger.error(f"Error in get_comparison_data: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/dashboard')
