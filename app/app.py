@@ -4,11 +4,11 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from collections import defaultdict
-import sqlite3
 import os
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+# Ensure this path matches the database path FastAPI will write to
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///larvae_monitoring.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -48,8 +48,6 @@ def load_user(user_id):
 
 # Helper Functions
 def get_latest_tray_data(tray_number):
-    # This helper function assumes it's still needed for individual tray data retrieval.
-    # It fetches the most recent entry for a given tray.
     return LarvaeData.query.filter_by(tray_number=tray_number).order_by(LarvaeData.timestamp.desc()).first()
 
 def calculate_weight_distribution_backend(weights_array):
@@ -67,7 +65,6 @@ def calculate_weight_distribution_backend(weights_array):
         else: weight_bins["140+"] += 1
     return list(weight_bins.keys()), list(weight_bins.values())
 
-
 # Routes
 @app.route('/')
 def home():
@@ -79,7 +76,7 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
-        
+
         if user and user.check_password(password):
             login_user(user)
             return redirect(url_for('dashboard'))
@@ -91,11 +88,11 @@ def register():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        
+
         if User.query.filter_by(username=username).first():
             flash('Username already exists', 'danger')
             return redirect(url_for('register'))
-            
+
         try:
             user = User(username=username)
             user.set_password(password)
@@ -106,11 +103,8 @@ def register():
         except Exception as e:
             db.session.rollback()
             flash('Registration failed. Please try again.', 'danger')
-    
-    return render_template('register.html')
 
-# Updated get_tray_data route to fetch data for the last 30 days
-# Add these routes to your existing Flask app
+    return render_template('register.html')
 
 @app.route('/get_tray_data/<int:tray_number>')
 @login_required
@@ -127,7 +121,7 @@ def get_tray_data(tray_number):
         # Process growth data
         growth_data = {"days": [], "length": [], "weight": []}
         daily_data = {}
-        
+
         if tray_data:
             start_date = tray_data[0].timestamp.date()
             for entry in tray_data:
@@ -148,7 +142,7 @@ def get_tray_data(tray_number):
             "80-90": 0, "90-100": 0, "100-110": 0,
             "110-120": 0, "120-130": 0, "130-140": 0, "140+": 0
         }
-        
+
         for entry in tray_data:
             weight = entry.weight
             if 80 <= weight < 90: weight_bins["80-90"] += 1
@@ -190,7 +184,7 @@ def get_combined_tray_data():
         # Get data from all trays
         all_data = []
         latest_entries = []
-        
+
         for tray_num in tray_numbers:
             tray_data = LarvaeData.query.filter_by(tray_number=tray_num).all()
             all_data.extend(tray_data)
@@ -215,11 +209,14 @@ def get_combined_tray_data():
         # Calculate combined growth data
         growth_data = {"days": [], "length": [], "weight": []}
         day_data = defaultdict(list)
-        
+
+        # Find the earliest timestamp among all data to set a consistent start day
+        earliest_timestamp = min(entry.timestamp for entry in all_data)
+
         for entry in all_data:
-            day = (entry.timestamp.date() - all_data[0].timestamp.date()).days + 1
+            day = (entry.timestamp.date() - earliest_timestamp.date()).days + 1
             day_data[day].append(entry)
-        
+
         for day, entries in sorted(day_data.items()):
             growth_data["days"].append(day)
             growth_data["length"].append(round(sum(e.length for e in entries)/len(entries), 1))
@@ -230,7 +227,7 @@ def get_combined_tray_data():
             "80-90": 0, "90-100": 0, "100-110": 0,
             "110-120": 0, "120-130": 0, "130-140": 0, "140+": 0
         }
-        
+
         for entry in all_data:
             weight = entry.weight
             if 80 <= weight < 90: weight_bins["80-90"] += 1
@@ -253,18 +250,17 @@ def get_combined_tray_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/get_comparison_data')
 @login_required
 def get_comparison_data():
     try:
         trays_data_for_comparison = {}
-        
+
         # Dynamically get all unique tray numbers from the database
         unique_trays = LarvaeData.query.with_entities(LarvaeData.tray_number).distinct().all()
-        
+
         # Iterate through each unique tray number found
-        for (tray_num,) in unique_trays: 
+        for (tray_num,) in unique_trays:
             # Fetch all historical data for the current tray, ordered by timestamp
             all_tray_data = LarvaeData.query.filter_by(tray_number=tray_num)\
                                           .order_by(LarvaeData.timestamp.asc())\
@@ -334,7 +330,7 @@ def get_comparison_data():
 def dashboard():
     # Dynamically get all unique tray numbers from the database
     unique_tray_numbers_raw = LarvaeData.query.with_entities(LarvaeData.tray_number).distinct().all()
-    
+
     # Convert list of tuples to a sorted list of integers
     unique_tray_numbers = sorted([tray_num for (tray_num,) in unique_tray_numbers_raw])
 
@@ -346,25 +342,8 @@ def dashboard():
 
     return render_template('dashboard.html', tray_data=tray_data_for_template)
 
+# REMOVED: @app.route('/api/data', methods=['POST']) - This will now be handled by FastAPI
 
-@app.route('/api/data', methods=['POST'])
-@login_required
-def receive_data():
-    try:
-        data = request.json
-        new_entry = LarvaeData(
-            tray_number=data['tray_number'],
-            length=data['length'],
-            width=data['width'],
-            area=data['area'],
-            weight=data['weight'],
-            count=data['count']
-        )
-        db.session.add(new_entry)
-        db.session.commit()
-        return jsonify({"status": "success", "message": "Data stored"}), 201
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
 
 @app.route('/logout')
 @login_required
@@ -386,10 +365,11 @@ with app.app_context():
         print("Test user 'testuser' with password 'password' created.")
 
     # Optional: Add some dummy data for new trays (e.g., 156, 256, 356) if the database is empty
+    # THIS DUMMY DATA WILL BE ADDED BY THE FLASK APP WHEN IT STARTS, NOT BY FASTAPI
     if not LarvaeData.query.first():
         print("Adding dummy data for demonstration.")
         from random import uniform, randint
-        
+
         # Add data for tray 1
         for i in range(1, 10):
             timestamp = datetime.utcnow() - timedelta(days=9 - i)
@@ -402,7 +382,7 @@ with app.app_context():
                 count=randint(100, 500),
                 timestamp=timestamp
             ))
-        
+
         # Add data for tray 2
         for i in range(1, 8):
             timestamp = datetime.utcnow() - timedelta(days=7 - i)
@@ -428,7 +408,7 @@ with app.app_context():
                 count=randint(120, 600),
                 timestamp=timestamp
             ))
-            
+
         # Add dummy data for new trays (e.g., 156, 256, 356) to ensure they appear
         for tray in [156, 256, 356]:
             for i in range(1, 7):
