@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, Column, Integer, Float, DateTime
-from sqlalchemy.orm import sessionmaker, declarative_base # Corrected import for SQLAlchemy 2.0+
+from sqlalchemy.orm import sessionmaker, declarative_base 
 from datetime import datetime
 import paho.mqtt.client as mqtt # Import MQTT library
 import json # To parse incoming JSON data
