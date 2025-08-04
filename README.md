@@ -39,7 +39,7 @@ A web-based dashboard for real-time monitoring of soldier fly larvae growth metr
 ```bash
     python3 -m venv venv
     source venv/bin/activate
-    python3 app.py
+    python3 app.py 
 ```
 3. **Access Application:**
 - http://localhost:8000

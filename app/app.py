@@ -389,7 +389,7 @@ MQTT_PORT = 1883
 MQTT_TOPIC = "bsf_monitor/larvae_data" # IMPORTANT: This MUST match the topic in your data publisher!
 
 # --- MQTT Callbacks (Modified to use Flask-SQLAlchemy's db.session) ---
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, rc, properties):
     """Callback function for when the MQTT client connects to the broker."""
     if rc == 0:
         print("Connected to MQTT Broker!")
@@ -441,7 +441,7 @@ def on_message(client, userdata, msg):
 # --- MQTT Thread Function ---
 def run_mqtt_subscriber():
     """Initializes and runs the MQTT client in a separate thread."""
-    mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1) # Specify API version
+    mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2) # Specify API version
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
 
