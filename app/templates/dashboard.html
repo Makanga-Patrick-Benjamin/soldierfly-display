@@ -15,7 +15,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -97,7 +97,6 @@
             border-color: #3498db;
         }
 
-
         .metrics-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -142,8 +141,12 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             padding: 15px;
+            position: relative;
+            height: 550px; /* Set a fixed height */
+            overflow-y: auto; /* Make it scrollable */
+            box-sizing: border-box; /* Ensure padding is included in the height */
         }
-
+        
         .chart-title {
             margin-top: 0;
             margin-bottom: 15px;
@@ -159,7 +162,6 @@
             white-space: nowrap;
         }
 
-        /* Comparison Button Specific Styles */
         .comparison-btn {
             background-color: #3498db;
             color: white;
@@ -177,12 +179,28 @@
             color: white;
         }
 
-        /* Comparison View Chart Title Styling */
         .chart-container.comparison-view .chart-title {
             color: #9b59b6;
             font-weight: bold;
         }
 
+        .chart-container .chartjs-legend {
+            font-size: 14px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            max-width: 100%;
+            white-space: nowrap;
+            overflow-x: auto;
+        }
+        
+        .chart-container .chartjs-legend li {
+            margin-right: 20px;
+            display: inline-block;
+        }
+        
         @media (max-width: 768px) {
             .charts-container {
                 grid-template-columns: 1fr;
@@ -213,6 +231,10 @@
                 flex-direction: column;
                 align-items: center;
                 padding: 10px 15px;
+            }
+            
+            .chart-container {
+                height: 400px; /* Smaller height on mobile */
             }
         }
     </style>
@@ -286,20 +308,16 @@
         let currentChartMode = 'both';
         let trayColors = {};
 
-    // Dynamic color generation for trays
     function generateTrayColors(trayNumbers) {
         const colors = {
-            0: '#f39c12', // Orange for combined
-            4: '#9b59b6'  // Purple for comparison
+            0: '#f39c12',
+            4: '#9b59b6'
         };
         
-        // Preset colors for first few trays
-        const presetColors = ['#228B22', '#00CED1', '#4B0082', '#FFD700', '#DC143C', '#1ABC9C', '#34495E', '#95A5A6', '#D35400', '#C0392B']; // Added more preset colors
+        const presetColors = ['#228B22', '#00CED1', '#4B0082', '#FFD700', '#DC143C', '#1ABC9C', '#34495E', '#95A5A6', '#D35400', '#C0392B'];
         
         trayNumbers.forEach((trayNum, index) => {
-            // Skip special trays (0 and 4) and already assigned trays
             if (trayNum !== 0 && trayNum !== 4 && !colors[trayNum]) {
-                // Use preset colors first, then generate random ones
                 colors[trayNum] = index < presetColors.length ? presetColors[index] : 
                     `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`;
             }
@@ -308,16 +326,10 @@
         return colors;
     }
 
-
-        // Initialize dashboard
         document.addEventListener('DOMContentLoaded', () => {
-            // Get tray numbers from Flask template data
             const trayNumbers = Object.keys({{ tray_data | tojson }}).map(Number);
-            
-            // Generate colors for all trays
             trayColors = generateTrayColors([0, ...trayNumbers, 4]);
             
-            // Set up event listeners
             document.querySelectorAll('.tray-btn').forEach(button => {
                 button.addEventListener('click', () => {
                     const trayNumber = parseInt(button.dataset.trayNumber);
@@ -332,7 +344,6 @@
                 });
             });
 
-            // Load initial data - prioritize first tray, then combined, then comparison
             const initialTray = trayNumbers.length > 0 ? trayNumbers[0] : 0;
             updateDashboard(initialTray, currentChartMode);
         });
@@ -342,7 +353,6 @@
                 currentSelectedTray = trayNumber;
                 if (chartMode) currentChartMode = chartMode;
 
-                // Update active button states
                 document.querySelectorAll('.tray-btn').forEach(btn => {
                     btn.classList.toggle('active', parseInt(btn.dataset.trayNumber) === trayNumber);
                 });
@@ -354,7 +364,6 @@
                 const weightChartContainer = document.getElementById('weightChartContainer');
 
                 if (trayNumber === 4) {
-                    // Comparison view
                     growthChartContainer.classList.add('comparison-view');
                     weightChartContainer.classList.add('comparison-view');
                     document.getElementById('growthChartTitle').textContent = 'Growth Trend Comparison (All Trays)';
@@ -367,7 +376,6 @@
                     updateMetricsDisplay(calculateAverageMetrics(currentComparisonData.trays));
                     document.getElementById('update-time').textContent = new Date(currentComparisonData.timestamp).toLocaleString();
                 } else {
-                    // Individual or combined tray view
                     growthChartContainer.classList.remove('comparison-view');
                     weightChartContainer.classList.remove('comparison-view');
                     
@@ -389,18 +397,15 @@
                     currentGrowthData = data.growthData || { days: [], length: [], weight: [] };
                     currentWeightDistribution = data.weightDistribution || { ranges: [], counts: [] };
                     
-                    // Update metrics display
                     updateMetricsDisplay(data.metrics || { length: 0, width: 0, area: 0, weight: 0, count: 0 });
                     document.getElementById('update-time').textContent = data.timestamp ? 
                         new Date(data.timestamp).toLocaleString() : 'N/A';
 
-                    // Update charts
                     updateGrowthChart(currentGrowthData, trayNumber, currentChartMode);
                     updateWeightChart(currentWeightDistribution, trayNumber);
                 }
             } catch (error) {
                 console.error('Error updating dashboard:', error);
-                // Clear data on error
                 updateMetricsDisplay({ length: 0, width: 0, area: 0, weight: 0, count: 0 });
                 updateGrowthChart({ days: [], length: [], weight: [] }, currentSelectedTray, currentChartMode);
                 updateWeightChart({ ranges: [], counts: [] }, currentSelectedTray);
@@ -492,6 +497,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     interaction: {
                         mode: 'index',
                         intersect: false,
@@ -541,12 +547,18 @@
                                     return label;
                                 }
                             }
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 20,
+                                padding: 15
+                            }
                         }
                     }
                 }
             });
         }
-
 
         function updateWeightChart(data, currentTrayNumber) {
             const ctx = document.getElementById('weightChart').getContext('2d');
@@ -558,7 +570,7 @@
             const backgroundColor = `${borderColor}B3`;
 
             weightChart = new Chart(ctx, {
-                type: 'line', // Changed from 'line' to 'bar'
+                type: 'line',
                 data: {
                     labels: data.ranges.map(range => `${range} mg`),
                     datasets: [
@@ -575,6 +587,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         y: {
                             beginAtZero: true,
@@ -604,6 +617,9 @@
                                     return label;
                                 }
                             }
+                        },
+                        legend: {
+                            display: false
                         }
                     }
                 }
@@ -660,7 +676,6 @@
             const sortedDays = Array.from(allDays).sort((a, b) => a - b);
             const growthLabels = sortedDays.map(day => `Day ${day}`);
 
-
             growthChart = new Chart(growthCtx, {
                 type: 'line',
                 data: {
@@ -669,6 +684,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
                     scales: {
                         y: {
@@ -704,6 +720,13 @@
                                     return label;
                                 }
                             }
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 20,
+                                padding: 15
+                            }
                         }
                     }
                 }
@@ -728,19 +751,20 @@
                         borderWidth: 2,
                         fill: true,
                         tension: 0.4,
-                        type: 'line' // Changed from 'line' to 'bar'
+                        type: 'line'
                     });
                 }
             }
 
             weightChart = new Chart(weightCtx, {
-                type: 'line', // Changed from 'line' to 'bar'
+                type: 'line',
                 data: {
                     labels: weightLabels,
                     datasets: weightDatasets
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         y: {
                             beginAtZero: true,
@@ -763,6 +787,13 @@
                                     }
                                     return label;
                                 }
+                            }
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 20,
+                                padding: 15
                             }
                         }
                     }
@@ -793,39 +824,6 @@
             });
             return bins;
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Get all tray numbers from the template data passed by Flask
-            const trayNumbersFromFlask = Object.keys({{ tray_data | tojson }}).map(Number);
-            
-            // Generate colors for all trays (including special trays 0 for combined and 4 for comparison)
-            trayColors = generateTrayColors([0, ...trayNumbersFromFlask, 4]);
-            
-            // Set up event listeners for tray buttons
-            document.querySelectorAll('.tray-btn').forEach(button => {
-                button.addEventListener('click', () => {
-                    const trayNumber = parseInt(button.dataset.trayNumber);
-                    updateDashboard(trayNumber, currentChartMode);
-                });
-            });
-
-            // Set up event listeners for chart mode buttons
-            document.querySelectorAll('.chart-toggle-btn').forEach(button => {
-                button.addEventListener('click', () => {
-                    const mode = button.dataset.chartMode;
-                    updateDashboard(currentSelectedTray, mode);
-                });
-            });
-
-            // Load data for the first available tray or combined view if no trays
-            let initialTray;
-            if (trayNumbersFromFlask.length > 0) {
-                initialTray = trayNumbersFromFlask[0]; // Load the first dynamic tray by default
-            } else {
-                initialTray = 0; // Load Combined Trays if no individual trays are found
-            }
-            updateDashboard(initialTray, currentChartMode);
-        });
     </script>
 </body>
 </html>
