@@ -105,3 +105,4 @@
 -- TRUNCATE TABLE larvae_data;
 
 SELECT * FROM larvae_data;
+-- DELETE FROM larvae_data WHERE tray_number = 256;
