@@ -740,7 +740,7 @@
         let weightChart;
         let currentSelectedTray = null;
         let currentGrowthData = {};
-        let currentWeightDistribution = {};
+        let currentWeightData = {}; // New variable to store raw weight data
         let currentComparisonData = {};
         let currentChartMode = 'both';
         let trayColors = {};
@@ -938,17 +938,17 @@
                             1: {
                                 latest: {length: 15.2, width: 3.1, area: 47.1, weight: 125.3, count: 450},
                                 growthData: {days: [1, 2, 3, 4, 5], length: [12.1, 13.5, 14.2, 14.8, 15.2], weight: [95.2, 105.1, 115.3, 120.1, 125.3]},
-                                allWeights: [95, 105, 115, 120, 125, 130, 135, 140, 145]
+                                allWeights: [95.2, 105.1, 115.3, 120.1, 125.3, 130, 135, 140, 145]
                             },
                             2: {
                                 latest: {length: 17.8, width: 3.4, area: 60.5, weight: 142.1, count: 380},
                                 growthData: {days: [1, 2, 3, 4], length: [14.2, 15.8, 16.9, 17.8], weight: [110.2, 125.4, 135.8, 142.1]},
-                                allWeights: [110, 125, 135, 142, 150, 155, 160]
+                                allWeights: [110.2, 125.4, 135.8, 142.1, 150, 155, 160]
                             },
                             3: {
                                 latest: {length: 13.6, width: 2.8, area: 38.1, weight: 108.7, count: 520},
                                 growthData: {days: [1, 2, 3, 4, 5, 6], length: [10.1, 11.2, 12.1, 12.8, 13.2, 13.6], weight: [85.1, 92.3, 98.7, 103.2, 106.1, 108.7]},
-                                allWeights: [85, 92, 98, 103, 106, 108, 112, 115]
+                                allWeights: [85.1, 92.3, 98.7, 103.2, 106.1, 108.7, 112, 115]
                             }
                         },
                         timestamp: new Date().toISOString()
@@ -972,19 +972,19 @@
                     const sampleData = {
                         metrics: {length: 15.2, width: 3.1, area: 47.1, weight: 125.3, count: 450},
                         growthData: {days: [1, 2, 3, 4, 5], length: [12.1, 13.5, 14.2, 14.8, 15.2], weight: [95.2, 105.1, 115.3, 120.1, 125.3]},
-                        weightDistribution: {ranges: ["80-90", "90-100", "100-110", "110-120", "120-130", "130-140", "140+"], counts: [5, 12, 25, 45, 35, 18, 8]},
+                        allWeights: [120, 125, 130, 115, 140, 122, 128, 135, 110, 105, 118, 123, 126, 132, 138, 145, 100, 95, 150, 155, 160], // Raw data for density plot
                         timestamp: new Date().toISOString()
                     };
 
                     currentGrowthData = sampleData.growthData || { days: [], length: [], weight: [] };
-                    currentWeightDistribution = sampleData.weightDistribution || { ranges: [], counts: [] };
+                    currentWeightData = sampleData.allWeights || [];
                     
                     updateMetricsDisplay(sampleData.metrics || { length: 0, width: 0, area: 0, weight: 0, count: 0 });
                     document.getElementById('update-time').textContent = sampleData.timestamp ? 
                         new Date(sampleData.timestamp).toLocaleString() : 'N/A';
 
                     updateGrowthChart(currentGrowthData, trayNumber, currentChartMode);
-                    updateWeightChart(currentWeightDistribution, trayNumber);
+                    updateWeightChart(currentWeightData, trayNumber);
                 }
                 
                 hideLoading('growth');
@@ -995,7 +995,7 @@
                 hideLoading('weight');
                 updateMetricsDisplay({ length: 0, width: 0, area: 0, weight: 0, count: 0 });
                 updateGrowthChart({ days: [], length: [], weight: [] }, currentSelectedTray, currentChartMode);
-                updateWeightChart({ ranges: [], counts: [] }, currentSelectedTray);
+                updateWeightChart([], currentSelectedTray);
                 document.getElementById('update-time').textContent = 'Error loading data';
             }
         }
@@ -1132,18 +1132,50 @@
 
             const borderColor = trayColors[currentTrayNumber] || '#3498db';
             const backgroundColor = `${borderColor}50`;
-            const borderDash = [5, 5];
+
+            // Function to generate histogram data from an array of numbers
+            function getDensityData(weights) {
+                if (weights.length === 0) return { labels: [], data: [] };
+                
+                const minWeight = Math.min(...weights);
+                const maxWeight = Math.max(...weights);
+                const binSize = 5; // You can adjust the bin size for different granularity
+                const numBins = Math.ceil((maxWeight - minWeight) / binSize);
+                
+                const bins = new Array(numBins).fill(0);
+                const labels = [];
+                for (let i = 0; i < numBins; i++) {
+                    const binStart = minWeight + i * binSize;
+                    const binEnd = binStart + binSize;
+                    labels.push(`${binStart.toFixed(0)}-${binEnd.toFixed(0)}`);
+                }
+                
+                weights.forEach(weight => {
+                    let binIndex = Math.floor((weight - minWeight) / binSize);
+                    if (binIndex >= numBins) binIndex = numBins - 1; // Handle edge case for max value
+                    if (binIndex >= 0 && binIndex < bins.length) {
+                        bins[binIndex]++;
+                    }
+                });
+
+                return { labels, data: bins };
+            }
+
+            const { labels, data: densityData } = getDensityData(data);
 
             weightChart = new Chart(ctx, {
-                type: 'bar',
+                type: 'line',
                 data: {
-                    labels: data.ranges,
+                    labels: labels,
                     datasets: [{
-                        label: `Weight Distribution - Tray ${currentTrayNumber === 0 ? 'Combined' : currentTrayNumber}`,
-                        data: data.counts,
+                        label: `Weight Density - Tray ${currentTrayNumber === 0 ? 'Combined' : currentTrayNumber}`,
+                        data: densityData,
                         backgroundColor: backgroundColor,
                         borderColor: borderColor,
-                        borderWidth: 1
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0
                     }]
                 },
                 options: {
@@ -1255,20 +1287,21 @@
 
             const weightCtx = document.getElementById('weightChart').getContext('2d');
             if (weightChart) weightChart.destroy();
-            
+
             const allWeights = Object.values(traysData).flatMap(t => t.allWeights);
-            const maxWeight = Math.max(...allWeights);
             const minWeight = Math.min(...allWeights);
-            const binSize = 10;
-            
+            const maxWeight = Math.max(...allWeights);
+            const binSize = 5;
+            const labels = [];
             const bins = {};
-            for (let i = Math.floor(minWeight/binSize)*binSize; i <= Math.ceil(maxWeight/binSize)*binSize; i+=binSize) {
-                bins[`${i}-${i+binSize}`] = [];
+            for (let i = minWeight; i <= maxWeight + binSize; i += binSize) {
+                labels.push(`${i.toFixed(0)}-${(i + binSize).toFixed(0)}`);
+                bins[i] = [];
             }
             
             for (const trayNum in traysData) {
                 traysData[trayNum].allWeights.forEach(weight => {
-                    const bin = `${Math.floor(weight/binSize)*binSize}-${Math.floor(weight/binSize)*binSize+binSize}`;
+                    const bin = Math.floor(weight / binSize) * binSize;
                     if (bins[bin]) {
                         bins[bin].push(weight);
                     }
@@ -1277,17 +1310,12 @@
 
             const weightDatasets = [];
             for (const trayNum in traysData) {
-                const data = traysData[trayNum].allWeights;
                 const borderColor = trayColors[trayNum] || '#000000';
                 const backgroundColor = `${borderColor}50`;
                 
-                const binnedData = Object.values(bins).map(bin => 0);
-                
-                data.forEach(weight => {
-                    const binIndex = Math.floor(weight/binSize) - Math.floor(minWeight/binSize);
-                    if (binIndex >= 0 && binIndex < binnedData.length) {
-                        binnedData[binIndex]++;
-                    }
+                const binnedData = Object.keys(bins).map(binStart => {
+                    const binArray = traysData[trayNum].allWeights.filter(w => w >= binStart && w < (parseFloat(binStart) + binSize));
+                    return binArray.length;
                 });
                 
                 weightDatasets.push({
@@ -1296,14 +1324,16 @@
                     backgroundColor: backgroundColor,
                     borderColor: borderColor,
                     borderWidth: 1,
-                    type: 'bar',
-                    stack: 'Stack 0'
+                    type: 'line',
+                    fill: 'stack', // Stacked area chart for comparison
+                    tension: 0.4,
+                    pointRadius: 0
                 });
             }
 
             weightChart = new Chart(weightCtx, {
                 data: {
-                    labels: Object.keys(bins),
+                    labels: labels,
                     datasets: weightDatasets
                 },
                 options: {
