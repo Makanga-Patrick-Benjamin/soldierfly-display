@@ -12,12 +12,14 @@
             padding: 0;
             background-color: #f5f7fa;
             color: #333;
+            overflow-x: auto;
         }
 
         .container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
+            min-width: 320px;
         }
 
         header {
@@ -29,6 +31,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .header-left {
@@ -38,11 +44,10 @@
         }
 
         .logo {
-            height: 150px;
+            height: 50px;
             width: auto;
             border-radius: 30%;
             object-fit: cover;
-            margin-bottom: 5px;
         }
 
         h1 {
@@ -51,11 +56,38 @@
             color: white;
         }
 
+        .controls-section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 90px;
+            z-index: 90;
+        }
+
         .tray-selector {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             flex-wrap: wrap;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .tray-selector::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .tray-selector::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .tray-selector::-webkit-scrollbar-thumb {
+            background: #bdc3c7;
+            border-radius: 3px;
         }
 
         .tray-btn, .chart-toggle-btn {
@@ -66,27 +98,28 @@
             cursor: pointer;
             font-weight: bold;
             transition: all 0.3s;
-            flex-grow: 1;
             text-align: center;
             min-width: 120px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .tray-btn:hover, .chart-toggle-btn:hover {
             background-color: #dcdfe4;
             border-color: #aeb6bf;
+            transform: translateY(-2px);
         }
 
         .tray-btn.active {
             background-color: #27ae60;
             color: white;
             border-color: #27ae60;
+            box-shadow: 0 4px 8px rgba(39, 174, 96, 0.3);
         }
 
         .chart-toggle-group {
             display: flex;
             gap: 10px;
-            margin-top: 15px;
-            margin-bottom: 20px;
             justify-content: center;
             flex-wrap: wrap;
         }
@@ -95,71 +128,7 @@
             background-color: #3498db;
             color: white;
             border-color: #3498db;
-        }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-
-        .metric-card {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            padding: 15px;
-            text-align: center;
-        }
-
-        .metric-value {
-            font-size: 24px;
-            font-weight: bold;
-            margin: 10px 0;
-            color: #2c3e50;
-        }
-
-        .metric-label {
-            color: #7f8c8d;
-            font-size: 14px;
-            text-transform: uppercase;
-        }
-
-        .unit {
-            font-size: 14px;
-            color: #7f8c8d;
-        }
-
-        .charts-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        .chart-container {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            padding: 15px;
-            position: relative;
-            height: 550px; /* Set a fixed height */
-            overflow-y: auto; /* Make it scrollable */
-            box-sizing: border-box; /* Ensure padding is included in the height */
-        }
-        
-        .chart-title {
-            margin-top: 0;
-            margin-bottom: 15px;
-            color: #2c3e50;
-            font-size: 18px;
-            text-align: center;
-        }
-
-        .update-time {
-            font-size: 14px;
-            color: #7f8c8d;
-            text-align: right;
-            white-space: nowrap;
+            box-shadow: 4px 8px rgba(52, 152, 219, 0.3);
         }
 
         .comparison-btn {
@@ -179,62 +148,473 @@
             color: white;
         }
 
-        .chart-container.comparison-view .chart-title {
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .metric-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #2c3e50;
+        }
+
+        .metric-label {
+            color: #7f8c8d;
+            font-size: 14px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .unit {
+            font-size: 16px;
+            color: #7f8c8d;
+        }
+
+        .image-classification-section {
+            margin-bottom: 30px;
+        }
+
+        .chart-header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .image-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .refresh-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .refresh-btn:hover {
+            background-color: #218838;
+        }
+
+        .refresh-icon {
+            font-size: 16px;
+            transition: transform 0.3s;
+        }
+
+        .refresh-btn:hover .refresh-icon {
+            transform: rotate(90deg);
+        }
+
+        #trayFilter {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+            min-height: 300px;
+        }
+
+        .image-item {
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .image-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .image-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .image-wrapper img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .image-item:hover .image-wrapper img {
+            transform: scale(1.05);
+        }
+
+        .image-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-items: flex-end;
+        }
+
+        .classification-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .classification-badge.healthy {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .classification-badge.warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .classification-badge.critical {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .confidence-score {
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 3px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .image-info {
+            padding: 15px;
+        }
+
+        .image-title {
+            font-weight: bold;
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .image-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .timestamp {
+            font-weight: 500;
+        }
+
+        .larvae-count {
+            background-color: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .classification-metrics {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .metric {
+            font-size: 11px;
+            color: #495057;
+            background-color: #f8f9fa;
+            padding: 3px 6px;
+            border-radius: 4px;
+            flex: 1;
+            text-align: center;
+        }
+
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            padding: 20px 0;
+            border-top: 1px solid #e9ecef;
+            margin-top: 20px;
+        }
+
+        .pagination-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .pagination-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .pagination-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+
+        .chart-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .chart-header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .chart-title {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 20px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .chart-content {
+            padding: 20px;
+            position: relative;
+        }
+
+        .chart-canvas-wrapper {
+            position: relative;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+
+        .comparison-view .chart-canvas-wrapper {
+            height: 500px;
+        }
+
+        .chart-legend {
+            max-height: 120px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border-top: 1px solid #e9ecef;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+
+        .chart-legend::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chart-legend::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .chart-legend::-webkit-scrollbar-thumb {
+            background: #bdc3c7;
+            border-radius: 3px;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 8px;
+            padding: 10px 0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            background-color: #f8f9fa;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        .legend-dash {
+            width: 16px;
+            height: 2px;
+            border-radius: 1px;
+            flex-shrink: 0;
+        }
+
+        .update-time {
+            font-size: 14px;
+            color: #7f8c8d;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .comparison-view .chart-title {
             color: #9b59b6;
             font-weight: bold;
         }
 
-        .chart-container .chartjs-legend {
-            font-size: 14px;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            max-width: 100%;
-            white-space: nowrap;
-            overflow-x: auto;
+        .loading-indicator {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
         }
-        
-        .chart-container .chartjs-legend li {
-            margin-right: 20px;
-            display: inline-block;
+
+        .loading-indicator.show {
+            display: block;
         }
-        
-        @media (max-width: 768px) {
-            .charts-container {
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 1200px) {
+            .charts-section {
                 grid-template-columns: 1fr;
             }
-            .tray-selector, .chart-toggle-group {
-                flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
             }
+            
+            .controls-section {
+                padding: 15px;
+            }
+            
             .tray-btn, .chart-toggle-btn {
-                flex-basis: 48%;
+                min-width: 100px;
+                padding: 8px 16px;
+                font-size: 14px;
             }
+            
             .header-left {
                 flex-direction: column;
                 align-items: center;
-                gap: 5px;
+                gap: 10px;
             }
+            
             .logo {
-                height: 50px;
-                margin-bottom: 5px;
+                height: 40px;
             }
+            
             h1 {
-                font-size: 20px;
+                font-size: 18px;
                 text-align: center;
             }
+            
             .update-time {
                 display: none;
             }
+            
             header {
                 flex-direction: column;
                 align-items: center;
-                padding: 10px 15px;
+                padding: 15px;
             }
             
-            .chart-container {
-                height: 400px; /* Smaller height on mobile */
+            .metric-value {
+                font-size: 24px;
+            }
+            
+            .chart-canvas-wrapper {
+                height: 300px;
+            }
+            
+            .comparison-view .chart-canvas-wrapper {
+                height: 350px;
+            }
+            
+            .legend-grid {
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+
+        @media (max-width: 480px) {
+            .metrics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+            
+            .tray-btn, .chart-toggle-btn {
+                min-width: 80px;
+                padding: 6px 12px;
+                font-size: 12px;
             }
         }
     </style>
@@ -249,18 +629,20 @@
             <div class="update-time">Last updated: <span id="update-time"></span></div>
         </header>
 
-        <div class="tray-selector" id="tray-selector">
-            {% for tray_num, data in tray_data.items() %}
-            <button class="tray-btn" data-tray-number="{{ tray_num }}">Tray #{{ tray_num }}</button>
-            {% endfor %}
-            <button class="tray-btn" data-tray-number="0">Combined Trays</button>
-            <button class="tray-btn comparison-btn" data-tray-number="4">Compare All Trays</button>
-        </div>
+        <div class="controls-section">
+            <div class="tray-selector" id="tray-selector">
+                {% for tray_num, data in tray_data.items() %}
+                <button class="tray-btn" data-tray-number="{{ tray_num }}">Tray #{{ tray_num }}</button>
+                {% endfor %}
+                <button class="tray-btn" data-tray-number="0">Combined Trays</button>
+                <button class="tray-btn comparison-btn" data-tray-number="4">Compare All Trays</button>
+            </div>
 
-        <div class="chart-toggle-group">
-            <button class="chart-toggle-btn active" data-chart-mode="both">Length & Weight</button>
-            <button class="chart-toggle-btn" data-chart-mode="length">Length Only</button>
-            <button class="chart-toggle-btn" data-chart-mode="weight">Weight Only</button>
+            <div class="chart-toggle-group">
+                <button class="chart-toggle-btn active" data-chart-mode="both">Length & Weight</button>
+                <button class="chart-toggle-btn" data-chart-mode="length">Length Only</button>
+                <button class="chart-toggle-btn" data-chart-mode="weight">Weight Only</button>
+            </div>
         </div>
 
         <div class="metrics-grid">
@@ -286,14 +668,69 @@
             </div>
         </div>
 
-        <div class="charts-container">
-            <div class="chart-container" id="growthChartContainer">
-                <h3 class="chart-title" id="growthChartTitle">Growth Trend (Over Days)</h3>
-                <canvas id="growthChart"></canvas>
+        <div class="image-classification-section">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">Recent Classified Images</h3>
+                    <div class="image-controls">
+                        <button class="refresh-btn" onclick="refreshImages()">
+                            <span class="refresh-icon">↻</span> Refresh
+                        </button>
+                        <select id="trayFilter" onchange="filterImages()">
+                            <option value="all">All Trays</option>
+                            {% for tray_num, data in tray_data.items() %}
+                            <option value="{{ tray_num }}">Tray {{ tray_num }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="chart-content">
+                    <div class="loading-indicator" id="imagesLoading">
+                        <div class="spinner"></div>
+                        <div>Loading classified images...</div>
+                    </div>
+                    <div class="images-grid" id="imagesGrid">
+                        </div>
+                    <div class="pagination-controls">
+                        <button class="pagination-btn" onclick="previousPage()" id="prevBtn">← Previous</button>
+                        <span class="page-info">Page <span id="currentPage">1</span> of <span id="totalPages">3</span></span>
+                        <button class="pagination-btn" onclick="nextPage()" id="nextBtn">Next →</button>
+                    </div>
+                </div>
             </div>
+        </div>
+
+        <div class="charts-section">
+            <div class="chart-container" id="growthChartContainer">
+                <div class="chart-header">
+                    <h3 class="chart-title" id="growthChartTitle">Growth Trend (Over Days)</h3>
+                </div>
+                <div class="chart-content">
+                    <div class="loading-indicator" id="growthLoading">
+                        <div class="spinner"></div>
+                        <div>Loading chart data...</div>
+                    </div>
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="growthChart"></canvas>
+                    </div>
+                    <div class="chart-legend" id="growthLegend"></div>
+                </div>
+            </div>
+            
             <div class="chart-container" id="weightChartContainer">
-                <h3 class="chart-title" id="weightChartTitle">Weight Distribution</h3>
-                <canvas id="weightChart"></canvas>
+                <div class="chart-header">
+                    <h3 class="chart-title" id="weightChartTitle">Weight Distribution</h3>
+                </div>
+                <div class="chart-content">
+                    <div class="loading-indicator" id="weightLoading">
+                        <div class="spinner"></div>
+                        <div>Loading chart data...</div>
+                    </div>
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="weightChart"></canvas>
+                    </div>
+                    <div class="chart-legend" id="weightLegend"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -307,27 +744,147 @@
         let currentComparisonData = {};
         let currentChartMode = 'both';
         let trayColors = {};
+        
+        // Sample tray data (replace with your Flask template data)
+        const trayData = {1: {}, 2: {}, 3: {}, 156: {}, 256: {}, 356: {}};
 
-    function generateTrayColors(trayNumbers) {
-        const colors = {
-            0: '#f39c12',
-            4: '#9b59b6'
-        };
+        // Data for classified images
+        let allImagesData = [];
+        let filteredImages = [];
+        let currentPage = 1;
+        const imagesPerPage = 8;
         
-        const presetColors = ['#228B22', '#00CED1', '#4B0082', '#FFD700', '#DC143C', '#1ABC9C', '#34495E', '#95A5A6', '#D35400', '#C0392B'];
-        
-        trayNumbers.forEach((trayNum, index) => {
-            if (trayNum !== 0 && trayNum !== 4 && !colors[trayNum]) {
-                colors[trayNum] = index < presetColors.length ? presetColors[index] : 
-                    `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`;
+        /**
+         * This is a placeholder function to load classified images.
+         * Replace the code inside this function with your actual logic to fetch
+         * classified image data from an API or a server endpoint.
+         * The data should be an array of objects, where each object has the following structure:
+         * {
+         * id: <unique_id>,
+         * tray: <tray_number>,
+         * src: <url_to_image>,
+         * timestamp: <timestamp_of_capture>,
+         * count: <larvae_count>,
+         * avgLength: <average_length>,
+         * avgWeight: <average_weight>
+         * }
+         * For example:
+         * allImagesData = [
+         * {
+         * id: 1,
+         * tray: 1,
+         * src: "http://yourserver.com/image1.jpg",
+         * timestamp: "2023-08-12T10:00:00Z",
+         * count: 150,
+         * avgLength: "15.2",
+         * avgWeight: "120.3"
+         * },
+         * // ... more image data
+         * ];
+         */
+        function loadClassifiedImages() {
+            // This is sample data, replace this with your actual API call.
+            // For example:
+            // fetch('/api/classified-images')
+            //     .then(response => response.json())
+            //     .then(data => {
+            //         allImagesData = data;
+            //         filterImages();
+            //         hideLoading('images');
+            //     })
+            //     .catch(error => {
+            //         console.error('Error fetching images:', error);
+            //         hideLoading('images');
+            //     });
+
+            // Sample data from the previous version is kept as a reference
+            const classifications = ['healthy', 'warning', 'critical'];
+            const trayNumbers = [1, 2, 3, 156, 256, 356];
+            allImagesData = [];
+            for (let i = 1; i <= 24; i++) {
+                const tray = trayNumbers[Math.floor(Math.random() * trayNumbers.length)];
+                const count = Math.floor(Math.random() * 200 + 100);
+                const avgLength = (Math.random() * 5 + 10).toFixed(1);
+                const avgWeight = (Math.random() * 50 + 80).toFixed(1);
+                
+                allImagesData.push({
+                    id: i,
+                    tray: tray,
+                    src: `https://picsum.photos/300/200?random=${i}`,
+                    timestamp: new Date(Date.now() - i * 3600 * 1000).toLocaleString(),
+                    count: count,
+                    avgLength: avgLength,
+                    avgWeight: avgWeight
+                });
             }
-        });
-        
-        return colors;
-    }
+            allImagesData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
 
+        // Dynamic color generation for trays
+        function generateTrayColors(trayNumbers) {
+            const colors = {
+                0: '#f39c12', // Orange for combined
+                4: '#9b59b6'  // Purple for comparison
+            };
+            
+            const presetColors = ['#228B22', '#00CED1', '#4B0082', '#FFD700', '#DC143C', '#1ABC9C', '#34495E', '#95A5A6', '#D35400', '#C0392B'];
+            
+            trayNumbers.forEach((trayNum, index) => {
+                if (trayNum !== 0 && trayNum !== 4 && !colors[trayNum]) {
+                    colors[trayNum] = index < presetColors.length ? presetColors[index] : 
+                        `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`;
+                }
+            });
+            
+            return colors;
+        }
+
+        function showLoading(chartType) {
+            document.getElementById(`${chartType}Loading`).classList.add('show');
+        }
+
+        function hideLoading(chartType) {
+            document.getElementById(`${chartType}Loading`).classList.remove('show');
+        }
+
+        function createCustomLegend(datasets, containerId, chartMode) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            if (!datasets || datasets.length === 0) return;
+            
+            const legendGrid = document.createElement('div');
+            legendGrid.className = 'legend-grid';
+            
+            datasets.forEach(dataset => {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'legend-item';
+                
+                const colorIndicator = document.createElement('div');
+                if (dataset.borderDash && dataset.borderDash.length > 0) {
+                    colorIndicator.className = 'legend-dash';
+                    colorIndicator.style.backgroundColor = dataset.borderColor;
+                } else {
+                    colorIndicator.className = 'legend-color';
+                    colorIndicator.style.backgroundColor = dataset.borderColor;
+                }
+                
+                const label = document.createElement('span');
+                label.textContent = dataset.label;
+                label.style.fontSize = '11px';
+                label.style.fontWeight = '500';
+                
+                legendItem.appendChild(colorIndicator);
+                legendItem.appendChild(label);
+                legendGrid.appendChild(legendItem);
+            });
+            
+            container.appendChild(legendGrid);
+        }
+
+        // Initialize dashboard
         document.addEventListener('DOMContentLoaded', () => {
-            const trayNumbers = Object.keys({{ tray_data | tojson }}).map(Number);
+            const trayNumbers = Object.keys(trayData).map(Number);
             trayColors = generateTrayColors([0, ...trayNumbers, 4]);
             
             document.querySelectorAll('.tray-btn').forEach(button => {
@@ -344,12 +901,18 @@
                 });
             });
 
+            loadClassifiedImages(); // Load classified images on startup
+            filterImages(); // Initial filter and render
+
             const initialTray = trayNumbers.length > 0 ? trayNumbers[0] : 0;
             updateDashboard(initialTray, currentChartMode);
         });
 
         async function updateDashboard(trayNumber, chartMode = null) {
             try {
+                showLoading('growth');
+                showLoading('weight');
+                
                 currentSelectedTray = trayNumber;
                 if (chartMode) currentChartMode = chartMode;
 
@@ -369,9 +932,29 @@
                     document.getElementById('growthChartTitle').textContent = 'Growth Trend Comparison (All Trays)';
                     document.getElementById('weightChartTitle').textContent = 'Weight Distribution Comparison (All Trays)';
 
-                    const response = await fetch('/get_comparison_data');
-                    currentComparisonData = await response.json();
+                    // Simulate API call with sample data
+                    const sampleComparisonData = {
+                        trays: {
+                            1: {
+                                latest: {length: 15.2, width: 3.1, area: 47.1, weight: 125.3, count: 450},
+                                growthData: {days: [1, 2, 3, 4, 5], length: [12.1, 13.5, 14.2, 14.8, 15.2], weight: [95.2, 105.1, 115.3, 120.1, 125.3]},
+                                allWeights: [95, 105, 115, 120, 125, 130, 135, 140, 145]
+                            },
+                            2: {
+                                latest: {length: 17.8, width: 3.4, area: 60.5, weight: 142.1, count: 380},
+                                growthData: {days: [1, 2, 3, 4], length: [14.2, 15.8, 16.9, 17.8], weight: [110.2, 125.4, 135.8, 142.1]},
+                                allWeights: [110, 125, 135, 142, 150, 155, 160]
+                            },
+                            3: {
+                                latest: {length: 13.6, width: 2.8, area: 38.1, weight: 108.7, count: 520},
+                                growthData: {days: [1, 2, 3, 4, 5, 6], length: [10.1, 11.2, 12.1, 12.8, 13.2, 13.6], weight: [85.1, 92.3, 98.7, 103.2, 106.1, 108.7]},
+                                allWeights: [85, 92, 98, 103, 106, 108, 112, 115]
+                            }
+                        },
+                        timestamp: new Date().toISOString()
+                    };
                     
+                    currentComparisonData = sampleComparisonData;
                     updateComparisonCharts(currentComparisonData.trays, currentChartMode);
                     updateMetricsDisplay(calculateAverageMetrics(currentComparisonData.trays));
                     document.getElementById('update-time').textContent = new Date(currentComparisonData.timestamp).toLocaleString();
@@ -385,27 +968,31 @@
                     document.getElementById('weightChartTitle').textContent = isCombined ? 
                         'Combined Weight Distribution' : `Weight Distribution - Tray ${trayNumber}`;
 
-                    const endpoint = isCombined ? '/get_combined_tray_data' : `/get_tray_data/${trayNumber}`;
-                    const response = await fetch(endpoint);
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    
-                    const data = await response.json();
+                    // Simulate API call with sample data
+                    const sampleData = {
+                        metrics: {length: 15.2, width: 3.1, area: 47.1, weight: 125.3, count: 450},
+                        growthData: {days: [1, 2, 3, 4, 5], length: [12.1, 13.5, 14.2, 14.8, 15.2], weight: [95.2, 105.1, 115.3, 120.1, 125.3]},
+                        weightDistribution: {ranges: ["80-90", "90-100", "100-110", "110-120", "120-130", "130-140", "140+"], counts: [5, 12, 25, 45, 35, 18, 8]},
+                        timestamp: new Date().toISOString()
+                    };
 
-                    currentGrowthData = data.growthData || { days: [], length: [], weight: [] };
-                    currentWeightDistribution = data.weightDistribution || { ranges: [], counts: [] };
+                    currentGrowthData = sampleData.growthData || { days: [], length: [], weight: [] };
+                    currentWeightDistribution = sampleData.weightDistribution || { ranges: [], counts: [] };
                     
-                    updateMetricsDisplay(data.metrics || { length: 0, width: 0, area: 0, weight: 0, count: 0 });
-                    document.getElementById('update-time').textContent = data.timestamp ? 
-                        new Date(data.timestamp).toLocaleString() : 'N/A';
+                    updateMetricsDisplay(sampleData.metrics || { length: 0, width: 0, area: 0, weight: 0, count: 0 });
+                    document.getElementById('update-time').textContent = sampleData.timestamp ? 
+                        new Date(sampleData.timestamp).toLocaleString() : 'N/A';
 
                     updateGrowthChart(currentGrowthData, trayNumber, currentChartMode);
                     updateWeightChart(currentWeightDistribution, trayNumber);
                 }
+                
+                hideLoading('growth');
+                hideLoading('weight');
             } catch (error) {
                 console.error('Error updating dashboard:', error);
+                hideLoading('growth');
+                hideLoading('weight');
                 updateMetricsDisplay({ length: 0, width: 0, area: 0, weight: 0, count: 0 });
                 updateGrowthChart({ days: [], length: [], weight: [] }, currentSelectedTray, currentChartMode);
                 updateWeightChart({ ranges: [], counts: [] }, currentSelectedTray);
@@ -469,7 +1056,7 @@
                     borderWidth: 3,
                     tension: 0.3,
                     yAxisID: 'y',
-                    pointRadius: 3,
+                    pointRadius: 4,
                     pointBackgroundColor: borderColor
                 });
             }
@@ -484,7 +1071,7 @@
                     tension: 0.3,
                     yAxisID: 'y1',
                     borderDash: [5, 5],
-                    pointRadius: 3,
+                    pointRadius: 4,
                     pointBackgroundColor: borderColor
                 });
             }
@@ -498,6 +1085,11 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
                     interaction: {
                         mode: 'index',
                         intersect: false,
@@ -522,42 +1114,14 @@
                                 text: 'Weight (mg)'
                             },
                             grid: {
-                                drawOnChartArea: false,
+                                drawOnChartArea: (chartMode === 'both' || chartMode === 'length')
                             },
                             beginAtZero: true
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Days'
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += context.parsed.y.toFixed(1);
-                                    }
-                                    return label;
-                                }
-                            }
-                        },
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 20,
-                                padding: 15
-                            }
                         }
                     }
                 }
             });
+            createCustomLegend(datasets, 'growthLegend', chartMode);
         }
 
         function updateWeightChart(data, currentTrayNumber) {
@@ -566,125 +1130,104 @@
                 weightChart.destroy();
             }
 
-            const borderColor = trayColors[currentTrayNumber] || 'rgba(39, 174, 96, 1)';
-            const backgroundColor = `${borderColor}B3`;
+            const borderColor = trayColors[currentTrayNumber] || '#3498db';
+            const backgroundColor = `${borderColor}50`;
+            const borderDash = [5, 5];
 
             weightChart = new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
-                    labels: data.ranges.map(range => `${range} mg`),
-                    datasets: [
-                        {
-                            label: `Number of larvae - Tray ${currentTrayNumber === 0 ? 'Combined' : currentTrayNumber}`,
-                            data: data.counts,
-                            backgroundColor: backgroundColor,
-                            borderColor: borderColor,
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.4,
-                        }
-                    ]
+                    labels: data.ranges,
+                    datasets: [{
+                        label: `Weight Distribution - Tray ${currentTrayNumber === 0 ? 'Combined' : currentTrayNumber}`,
+                        data: data.counts,
+                        backgroundColor: backgroundColor,
+                        borderColor: borderColor,
+                        borderWidth: 1
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Count'
-                            }
-                        },
                         x: {
                             title: {
                                 display: true,
-                                text: 'Weight Range'
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += context.parsed.y.toLocaleString();
-                                    }
-                                    return label;
-                                }
+                                text: 'Weight Range (mg)'
                             }
                         },
-                        legend: {
-                            display: false
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Number of Larvae'
+                            },
+                            beginAtZero: true
                         }
                     }
                 }
             });
+            createCustomLegend(weightChart.data.datasets, 'weightLegend');
         }
 
         function updateComparisonCharts(traysData, chartMode) {
             const growthCtx = document.getElementById('growthChart').getContext('2d');
             if (growthChart) growthChart.destroy();
-
+            
             const growthDatasets = [];
-            let allDays = new Set();
-
+            
             for (const trayNum in traysData) {
-                const data = traysData[trayNum];
-                const color = trayColors[trayNum] || '#cccccc';
-
-                if (data.growthData && data.growthData.days) {
-                    data.growthData.days.forEach(day => allDays.add(day));
+                const data = traysData[trayNum].growthData;
+                const borderColor = trayColors[trayNum] || '#000000';
+                
+                if (chartMode === 'both' || chartMode === 'length') {
+                    growthDatasets.push({
+                        label: `Length (mm) - Tray ${trayNum}`,
+                        data: data.length,
+                        borderColor: borderColor,
+                        backgroundColor: `${borderColor}20`,
+                        borderWidth: 3,
+                        tension: 0.3,
+                        yAxisID: 'y',
+                        pointRadius: 3
+                    });
                 }
-
-                if (data.growthData && data.growthData.days && data.growthData.days.length > 0) {
-                    if (chartMode === 'both' || chartMode === 'length') {
-                        growthDatasets.push({
-                            label: `Tray ${trayNum} Length`,
-                            data: data.growthData.length,
-                            borderColor: color,
-                            backgroundColor: `${color}20`,
-                            borderWidth: 2,
-                            tension: 0.3,
-                            yAxisID: 'y',
-                            pointRadius: 3,
-                            pointBackgroundColor: color
-                        });
-                    }
-
-                    if (chartMode === 'both' || chartMode === 'weight') {
-                        growthDatasets.push({
-                            label: `Tray ${trayNum} Weight`,
-                            data: data.growthData.weight,
-                            borderColor: color,
-                            backgroundColor: `${color}20`,
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            tension: 0.3,
-                            yAxisID: 'y1',
-                            pointRadius: 3,
-                            pointBackgroundColor: color
-                        });
-                    }
+                
+                if (chartMode === 'both' || chartMode === 'weight') {
+                    growthDatasets.push({
+                        label: `Weight (mg) - Tray ${trayNum}`,
+                        data: data.weight,
+                        borderColor: borderColor,
+                        backgroundColor: `${borderColor}20`,
+                        borderWidth: 3,
+                        tension: 0.3,
+                        yAxisID: 'y1',
+                        borderDash: [5, 5],
+                        pointRadius: 3
+                    });
                 }
             }
-
-            const sortedDays = Array.from(allDays).sort((a, b) => a - b);
-            const growthLabels = sortedDays.map(day => `Day ${day}`);
-
+            
+            const commonLabels = Array.from(new Set(Object.values(traysData).flatMap(t => t.growthData.days)))
+                                     .sort((a, b) => a - b)
+                                     .map(day => `Day ${day}`);
+            
             growthChart = new Chart(growthCtx, {
                 type: 'line',
                 data: {
-                    labels: growthLabels,
+                    labels: commonLabels,
                     datasets: growthDatasets
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
                     interaction: { mode: 'index', intersect: false },
                     scales: {
                         y: {
@@ -699,130 +1242,173 @@
                             display: (chartMode === 'both' || chartMode === 'weight'),
                             position: 'right',
                             title: { display: (chartMode === 'both' || chartMode === 'weight'), text: 'Weight (mg)' },
-                            grid: { drawOnChartArea: false },
+                            grid: { drawOnChartArea: (chartMode === 'both' || chartMode === 'length') },
                             beginAtZero: true
                         },
                         x: {
-                            title: { display: true, text: 'Days' }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += context.parsed.y.toFixed(1);
-                                    }
-                                    return label;
-                                }
-                            }
-                        },
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 20,
-                                padding: 15
-                            }
+                            title: { display: true, text: 'Day' }
                         }
                     }
                 }
             });
+            createCustomLegend(growthDatasets, 'growthLegend');
 
             const weightCtx = document.getElementById('weightChart').getContext('2d');
             if (weightChart) weightChart.destroy();
-
-            const weightLabels = ["80-90", "90-100", "100-110", "110-120", "120-130", "130-140", "140+"];
-            const weightDatasets = [];
-
+            
+            const allWeights = Object.values(traysData).flatMap(t => t.allWeights);
+            const maxWeight = Math.max(...allWeights);
+            const minWeight = Math.min(...allWeights);
+            const binSize = 10;
+            
+            const bins = {};
+            for (let i = Math.floor(minWeight/binSize)*binSize; i <= Math.ceil(maxWeight/binSize)*binSize; i+=binSize) {
+                bins[`${i}-${i+binSize}`] = [];
+            }
+            
             for (const trayNum in traysData) {
-                const data = traysData[trayNum];
-                const color = trayColors[trayNum] || '#cccccc';
+                traysData[trayNum].allWeights.forEach(weight => {
+                    const bin = `${Math.floor(weight/binSize)*binSize}-${Math.floor(weight/binSize)*binSize+binSize}`;
+                    if (bins[bin]) {
+                        bins[bin].push(weight);
+                    }
+                });
+            }
 
-                if (data.allWeights && data.allWeights.length > 0) {
-                    weightDatasets.push({
-                        label: `Tray ${trayNum}`,
-                        data: calculateWeightDistribution(data.allWeights),
-                        backgroundColor: `${color}80`,
-                        borderColor: color,
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        type: 'line'
-                    });
-                }
+            const weightDatasets = [];
+            for (const trayNum in traysData) {
+                const data = traysData[trayNum].allWeights;
+                const borderColor = trayColors[trayNum] || '#000000';
+                const backgroundColor = `${borderColor}50`;
+                
+                const binnedData = Object.values(bins).map(bin => 0);
+                
+                data.forEach(weight => {
+                    const binIndex = Math.floor(weight/binSize) - Math.floor(minWeight/binSize);
+                    if (binIndex >= 0 && binIndex < binnedData.length) {
+                        binnedData[binIndex]++;
+                    }
+                });
+                
+                weightDatasets.push({
+                    label: `Tray ${trayNum}`,
+                    data: binnedData,
+                    backgroundColor: backgroundColor,
+                    borderColor: borderColor,
+                    borderWidth: 1,
+                    type: 'bar',
+                    stack: 'Stack 0'
+                });
             }
 
             weightChart = new Chart(weightCtx, {
-                type: 'line',
                 data: {
-                    labels: weightLabels,
+                    labels: Object.keys(bins),
                     datasets: weightDatasets
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: { display: true, text: 'Count' }
-                        },
-                        x: {
-                            title: { display: true, text: 'Weight Range (mg)' }
-                        }
-                    },
                     plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += context.parsed.y.toLocaleString();
-                                    }
-                                    return label;
-                                }
-                            }
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            title: { display: true, text: 'Weight Range (mg)' }
                         },
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 20,
-                                padding: 15
-                            }
+                        y: {
+                            stacked: true,
+                            title: { display: true, text: 'Number of Larvae' },
+                            beginAtZero: true
                         }
                     }
                 }
             });
+            createCustomLegend(weightDatasets, 'weightLegend');
         }
 
-        function calculateWeightDistribution(weightsArray) {
-            const bins = [0, 0, 0, 0, 0, 0, 0];
-            if (!weightsArray || !Array.isArray(weightsArray)) {
-                console.warn("calculateWeightDistribution received invalid data:", weightsArray);
-                return bins;
+        // Image functionality
+        function refreshImages() {
+            showLoading('images');
+            // This function is now a placeholder.
+            // Replace this with a call to fetch new classified image data.
+            loadClassifiedImages();
+            filterImages();
+            hideLoading('images');
+        }
+
+        function filterImages() {
+            const selectedTray = document.getElementById('trayFilter').value;
+            if (selectedTray === 'all') {
+                filteredImages = allImagesData;
+            } else {
+                filteredImages = allImagesData.filter(img => img.tray == selectedTray);
             }
+            currentPage = 1;
+            renderImagesGrid();
+            updatePaginationControls();
+        }
 
-            weightsArray.forEach(w => {
-                let binIndex = -1;
-                if (w >= 80 && w < 90) binIndex = 0;
-                else if (w >= 90 && w < 100) binIndex = 1;
-                else if (w >= 100 && w < 110) binIndex = 2;
-                else if (w >= 110 && w < 120) binIndex = 3;
-                else if (w >= 120 && w < 130) binIndex = 4;
-                else if (w >= 130 && w < 140) binIndex = 5;
-                else if (w >= 140) binIndex = 6;
+        function renderImagesGrid() {
+            const grid = document.getElementById('imagesGrid');
+            grid.innerHTML = '';
+            
+            const start = (currentPage - 1) * imagesPerPage;
+            const end = start + imagesPerPage;
+            const imagesToDisplay = filteredImages.slice(start, end);
 
-                if (binIndex !== -1) {
-                    bins[binIndex]++;
-                }
+            imagesToDisplay.forEach(image => {
+                const imageItem = document.createElement('div');
+                imageItem.className = 'image-item';
+                imageItem.dataset.tray = image.tray;
+                
+                imageItem.innerHTML = `
+                    <div class="image-wrapper">
+                        <img src="${image.src}" alt="Classified Image">
+                    </div>
+                    <div class="image-info">
+                        <div class="image-title">Tray ${image.tray} - Image ${image.id}</div>
+                        <div class="image-details">
+                            <span class="timestamp">${image.timestamp}</span>
+                            <span class="larvae-count">Count: ${image.count}</span>
+                        </div>
+                        <div class="classification-metrics">
+                            <span class="metric">Avg Length: ${image.avgLength}mm</span>
+                            <span class="metric">Avg Weight: ${image.avgWeight}mg</span>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(imageItem);
             });
-            return bins;
+            if (imagesToDisplay.length === 0) {
+                grid.innerHTML = '<div style="text-align: center; color: #7f8c8d; padding: 20px;">No images found for this tray.</div>';
+            }
+        }
+
+        function updatePaginationControls() {
+            const totalPages = Math.ceil(filteredImages.length / imagesPerPage);
+            document.getElementById('currentPage').textContent = currentPage;
+            document.getElementById('totalPages').textContent = totalPages > 0 ? totalPages : 1;
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+        }
+
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderImagesGrid();
+                updatePaginationControls();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredImages.length / imagesPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderImagesGrid();
+                updatePaginationControls();
+            }
         }
     </script>
 </body>
