@@ -101,8 +101,8 @@
 --   (256, 14.1, 3.5, 48.6, 145.8, 1500, '2023-10-30 09:05:00'),
 --   (356, 14.3, 3.5, 50.8, 152.4, 1505, '2023-10-30 09:10:00');
 
--- DELETE FROM larvae_data;
+DELETE FROM larvae_data;
 -- TRUNCATE TABLE larvae_data;
 
-SELECT * FROM larvae_data;
+-- SELECT * FROM larvae_data;
 -- DELETE FROM larvae_data WHERE tray_number = 256;
