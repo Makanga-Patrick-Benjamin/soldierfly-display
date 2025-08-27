@@ -39,10 +39,10 @@ A web-based dashboard for real-time monitoring of soldier fly larvae growth metr
 ```bash
     python3 -m venv venv #for python venv environment
     source venv/bin/activate
-    python3 app.py 
+    python3 BSFwebdashboard.py 
 ```
 ```bash
-    conada activate virtual environment
+    conda activate virtual environment
 ```
 3. **Access Application:**
 - http://localhost:8000
