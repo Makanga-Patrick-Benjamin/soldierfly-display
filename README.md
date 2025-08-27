@@ -32,14 +32,17 @@ A web-based dashboard for real-time monitoring of soldier fly larvae growth metr
 1. **Clone Repository**:
    ```bash
    git clone https://github.com/Makanga-Patrick-Benjamin/soldierfly-display.git
-   cd soldierfly-monitoring
+   cd soldierfly-display
    pip install -r requirements.txt
 
-2. **On linux to run the website**:
+2. **Activate your virtual environment**:
 ```bash
-    python3 -m venv venv
+    python3 -m venv venv #for python venv environment
     source venv/bin/activate
     python3 app.py 
+```
+```bash
+    conada activate virtual environment
 ```
 3. **Access Application:**
 - http://localhost:8000
