@@ -1,17 +1,16 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from collections import defaultdict
 import os
-import threading  # For running MQTT in a separate thread
+import threading # For running MQTT in a separate thread
 
 # MQTT specific imports
 import paho.mqtt.client as mqtt
 import json
-import time  # Although not heavily used, keep it if needed for future sleep operations
-import base64
+import time # Although not heavily used, keep it if needed for future sleep operations
 
 # --- Flask App Configuration ---
 app = Flask(__name__)
@@ -20,22 +19,11 @@ app.secret_key = os.urandom(24)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///larvae_monitoring.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Path to store images
-IMAGE_STORAGE_DIR = 'static/images'
-if not os.path.exists(IMAGE_STORAGE_DIR):
-    os.makedirs(IMAGE_STORAGE_DIR)
-    
-# MQTT broker details
-MQTT_BROKER = "mqtt-dashboard.com"
-MQTT_PORT = 1883
-MQTT_TOPIC = "larvae/monitoring"
-
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-
-# --- Database Models ---
+# --- Database Models (From app.py) ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -49,7 +37,8 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
 class LarvaeData(db.Model):
-    __tablename__ = 'larvae_data'
+    # Explicitly set table name for consistency, matching the original mqtt_subscriber.py's table name
+    __tablename__ = "larvae_data"
     id = db.Column(db.Integer, primary_key=True)
     tray_number = db.Column(db.Integer, nullable=False)
     length = db.Column(db.Float, nullable=False)
@@ -58,85 +47,15 @@ class LarvaeData(db.Model):
     weight = db.Column(db.Float, nullable=False)
     count = db.Column(db.Integer, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    image_path = db.Column(db.String(255), nullable=True)  # Add image_path field
 
-class ImageFile(db.Model):
-    __tablename__ = 'image_files'
-    id = db.Column(db.Integer, primary_key=True)
-    tray_number = db.Column(db.Integer, nullable=False)
-    file_path = db.Column(db.String(255), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    avg_length = db.Column(db.Float, nullable=True)
-    avg_weight = db.Column(db.Float, nullable=True)
-    count = db.Column(db.Integer, nullable=True)
+    def __repr__(self):
+        return f"<LarvaeData Tray {self.tray_number} - {self.timestamp}>"
 
-# --- MQTT Callbacks ---
-def on_connect(client, userdata, flags, rc, properties=None):
-    """Callback function for when the client connects to the MQTT broker."""
-    if rc == 0:
-        print("Connected to MQTT Broker!")
-        client.subscribe(MQTT_TOPIC)
-    else:
-        print(f"Failed to connect, return code {rc}")
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
-def on_message(client, userdata, msg):
-    """Callback function for when a message is received on the subscribed topic."""
-    print(f"Received message on topic: {msg.topic}")
-    try:
-        data = json.loads(msg.payload.decode('utf-8'))
-        
-        # Extract data and save to database
-        tray_number = data.get('tray_number')
-        avg_length = data.get('avg_length')
-        avg_width = data.get('avg_width')
-        avg_area = data.get('avg_area')
-        avg_weight = data.get('avg_weight')
-        larvae_count = data.get('larvae_count')
-        image_data_base64 = data.get('image_data_base64')
-        
-        # Create a unique filename for the image
-        timestamp_str = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-        image_filename = f"tray_{tray_number}_{timestamp_str}.jpg"
-        image_path = os.path.join(IMAGE_STORAGE_DIR, image_filename)
-        
-        # Decode and save the image file
-        if image_data_base64:
-            image_bytes = base64.b64decode(image_data_base64)
-            with open(image_path, 'wb') as f:
-                f.write(image_bytes)
-            print(f"Image saved to {image_path}")
-        
-        # Save larvae data to the database
-        with app.app_context():
-            new_larvae_data = LarvaeData(
-                tray_number=tray_number,
-                length=avg_length,
-                width=avg_width,
-                area=avg_area,
-                weight=avg_weight,
-                count=larvae_count,
-                image_path=image_path
-            )
-            
-            new_image_file = ImageFile(
-                tray_number=tray_number,
-                file_path=image_path,
-                avg_length=avg_length,
-                avg_weight=avg_weight,
-                count=larvae_count
-            )
-            
-            db.session.add(new_larvae_data)
-            db.session.add(new_image_file)
-            db.session.commit()
-            print("Data saved to database.")
-            
-    except json.JSONDecodeError:
-        print("Failed to decode JSON payload.")
-    except Exception as e:
-        print(f"An error occurred while processing MQTT message: {e}")
-
-# --- Helper Functions ---
+# --- Helper Functions (From app.py) ---
 def get_latest_tray_data(tray_number):
     """Fetches the most recent larvae data entry for a specific tray."""
     return LarvaeData.query.filter_by(tray_number=tray_number).order_by(LarvaeData.timestamp.desc()).first()
@@ -157,7 +76,51 @@ def calculate_weight_distribution_backend(weights_array):
         else: weight_bins["140+"] += 1
     return list(weight_bins.keys()), list(weight_bins.values())
 
-# --- API Endpoints ---
+# --- Flask Routes (From app.py) ---
+@app.route('/')
+def home():
+    """Redirects the root URL to the login page."""
+    return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Handles user login."""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        user = User.query.filter_by(username=username).first()
+
+        if user and user.check_password(password):
+            login_user(user)
+            flash('Login successful!', 'success')
+            return redirect(url_for('dashboard'))
+        flash('Invalid username or password', 'danger')
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """Handles new user registration."""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists', 'danger')
+            return redirect(url_for('register'))
+
+        try:
+            user = User(username=username)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            flash('Registration successful! Please login.', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Registration failed: {e}. Please try again.', 'danger')
+
+    return render_template('register.html')
+
 @app.route('/get_tray_data/<int:tray_number>')
 @login_required
 def get_tray_data(tray_number):
@@ -272,7 +235,7 @@ def get_combined_tray_data():
         day_data = defaultdict(list) # Stores all entries for a given 'day'
 
         # Find the earliest timestamp among all data to set a consistent start day for combined growth
-        earliest_timestamp = min(entry.timestamp for entry in all_data) if all_data else datetime.utcnow()
+        earliest_timestamp = min(entry.timestamp for entry in all_data)
 
         for entry in all_data:
             day = (entry.timestamp.date() - earliest_timestamp.date()).days + 1
@@ -409,56 +372,6 @@ def dashboard():
 
     return render_template('dashboard.html', tray_data=tray_data_for_template)
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-
-@app.route('/')
-def home():
-    if not current_user.is_authenticated:
-        return redirect(url_for('login'))
-    return redirect(url_for('dashboard'))
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('home'))
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        user = User.query.filter_by(username=username).first()
-        if user and user.check_password(password):
-            login_user(user)
-            flash('Logged in successfully.', 'success')
-            return redirect(url_for('home'))
-        else:
-            flash('Invalid username or password.', 'Try again')
-    return render_template('login.html')
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if current_user.is_authenticated:
-        return redirect(url_for('home'))
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        existing_user = User.query.filter_by(username=username).first()
-        if existing_user:
-            flash('Username already exists. Please choose a different one.', 'danger')
-            return redirect(url_for('register'))
-        try:
-            new_user = User(username=username)
-            new_user.set_password(password)
-            db.session.add(new_user)
-            db.session.commit()
-            flash('Registration successful! Please log in.', 'success')
-            return redirect(url_for('login'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Registration failed: {e}. Please try again.', 'danger')
-
-    return render_template('register.html')
-
 @app.route('/logout')
 @login_required
 def logout():
@@ -467,105 +380,152 @@ def logout():
     flash('You have been logged out', 'success')
     return redirect(url_for('login'))
 
-@app.route('/api/trays')
-@login_required
-def get_trays():
+# --- MQTT Configuration (From mqtt_subscriber.py) ---
+MQTT_BROKER = "broker.hivemq.com"
+MQTT_PORT = 1883
+MQTT_TOPIC = "bsf_monitor/larvae_data" # IMPORTANT: This MUST match the topic in your data publisher!
+
+# --- MQTT Callbacks (Modified to use Flask-SQLAlchemy's db.session) ---
+def on_connect(client, userdata, flags, rc, properties):
+    """Callback function for when the MQTT client connects to the broker."""
+    if rc == 0:
+        print("Connected to MQTT Broker!")
+        client.subscribe(MQTT_TOPIC)
+        print(f"Subscribed to topic: {MQTT_TOPIC}")
+    else:
+        print(f"Failed to connect, return code {rc}\n")
+
+def on_message(client, userdata, msg):
+    """Callback function for when an MQTT message is received."""
+    print(f"Received message on topic '{msg.topic}': {msg.payload.decode()}")
     try:
-        trays = db.session.query(LarvaeData.tray_number).distinct().order_by(LarvaeData.tray_number).all()
-        return jsonify([tray[0] for tray in trays])
+        payload = json.loads(msg.payload.decode())
+
+        # Validate incoming data (basic check, more robust validation could be added)
+        required_keys = ["tray_number", "length", "width", "area", "weight", "count"]
+        if not all(key in payload for key in required_keys):
+            print("Error: Received payload is missing required keys.")
+            return
+
+        # Use Flask's app context to interact with the database in the MQTT thread
+        with app.app_context():
+            try:
+                new_entry = LarvaeData(
+                    tray_number=payload["tray_number"],
+                    length=payload["length"],
+                    width=payload["width"],
+                    area=payload["area"],
+                    weight=payload["weight"],
+                    count=payload["count"],
+                    timestamp=datetime.utcnow() # Use current UTC time for consistency
+                )
+                db.session.add(new_entry)
+                db.session.commit()
+                print(f"Successfully stored data for Tray {new_entry.tray_number}, ID: {new_entry.id}")
+            except Exception as e:
+                db.session.rollback() # Rollback the transaction on error
+                print(f"Error storing data to database: {e}")
+            finally:
+                # Ensure the session is removed after each message processing.
+                # This is crucial for thread safety with Flask-SQLAlchemy's scoped sessions.
+                db.session.remove()
+
+    except json.JSONDecodeError:
+        print(f"Error: Could not decode JSON from message: {msg.payload.decode()}")
     except Exception as e:
-        print(f"Error getting trays: {e}")
-        return jsonify([])
+        print(f"An unexpected error occurred in on_message: {e}")
 
-@app.route('/api/larvae_data/<int:tray_number>')
-@login_required
-def get_larvae_data(tray_number):
-    try:
-        # Fetch the last 15 days of data for the specified tray number
-        end_date = datetime.utcnow()
-        start_date = end_date - timedelta(days=15)
-        
-        data_points = LarvaeData.query.filter(
-            LarvaeData.tray_number == tray_number,
-            LarvaeData.timestamp >= start_date
-        ).order_by(LarvaeData.timestamp).all()
-        
-        if not data_points:
-            return jsonify({"labels": [], "data": {"count": [], "length": [], "width": [], "area": [], "weight": []}})
-        
-        labels = [d.timestamp.strftime('%Y-%m-%d %H:%M') for d in data_points]
-        count_data = [d.count for d in data_points]
-        length_data = [d.length for d in data_points]
-        width_data = [d.width for d in data_points]
-        area_data = [d.area for d in data_points]
-        weight_data = [d.weight for d in data_points]
-        
-        return jsonify({
-            "labels": labels,
-            "data": {
-                "count": count_data,
-                "length": length_data,
-                "width": width_data,
-                "area": area_data,
-                "weight": weight_data
-            }
-        })
-    except Exception as e:
-        print(f"Error getting larvae data: {e}")
-        return jsonify({"labels": [], "data": {"count": [], "length": [], "width": [], "area": [], "weight": []}})
-
-@app.route('/api/images/<tray_number>')
-@login_required
-def get_images(tray_number):
-    try:
-        if tray_number == 'all':
-            images = ImageFile.query.order_by(ImageFile.timestamp.desc()).all()
-        else:
-            images = ImageFile.query.filter_by(tray_number=int(tray_number)).order_by(ImageFile.timestamp.desc()).all()
-        image_list = []
-        for img in images:
-            image_list.append({
-                "tray": img.tray_number,
-                "src": url_for('get_image_file', filename=os.path.basename(img.file_path)),
-                "timestamp": img.timestamp.isoformat(),
-                "count": img.count,
-                "avgLength": img.avg_length,
-                "avgWeight": img.avg_weight
-            })
-        return jsonify(image_list)
-    except Exception as e:
-        print(f"Error fetching images: {e}")
-        return jsonify([])
-
-@app.route('/images/<path:filename>')
-def get_image_file(filename):
-    """Serve images from the IMAGE_STORAGE_DIR."""
-    return send_file(os.path.join(IMAGE_STORAGE_DIR, filename), mimetype='image/jpeg')
-
-
+# --- MQTT Thread Function ---
 def run_mqtt_subscriber():
-    """Function to run the MQTT subscriber in a separate thread."""
-    mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)  # Specify API version
+    """Initializes and runs the MQTT client in a separate thread."""
+    mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2) # Specify API version
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
 
     try:
         mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
-        mqtt_client.loop_forever()  # Blocks and handles reconnections
+        mqtt_client.loop_forever() # Blocks and handles reconnections
     except Exception as e:
         print(f"Failed to connect to MQTT broker or loop error: {e}")
     finally:
         print("MQTT subscriber stopped.")
 
-
+# --- Main Execution Block ---
 if __name__ == '__main__':
+    # Initialize database and add dummy data within Flask app context
     with app.app_context():
-        # Re-create database and tables if they don't exist
-        db.create_all()
+        db.create_all() # Creates tables if they don't exist
+        # Create test user if none exists
+        if not User.query.filter_by(username='testuser').first():
+            admin_user = User(username='testuser')
+            admin_user.set_password('password')
+            db.session.add(admin_user)
+            db.session.commit()
+            print("Test user 'testuser' with password 'password' created.")
+
+        # Optional: Add some dummy data for new trays if the database is empty
+        if not LarvaeData.query.first():
+            print("Adding dummy data for demonstration.")
+            from random import uniform, randint
+
+            # Add data for tray 1
+            for i in range(1, 10):
+                timestamp = datetime.utcnow() - timedelta(days=9 - i)
+                db.session.add(LarvaeData(
+                    tray_number=1,
+                    length=round(uniform(10, 20), 1),
+                    width=round(uniform(2, 4), 1),
+                    area=round(uniform(20, 80), 1),
+                    weight=round(uniform(90, 150), 1),
+                    count=randint(100, 500),
+                    timestamp=timestamp
+                ))
+
+            # Add data for tray 2
+            for i in range(1, 8):
+                timestamp = datetime.utcnow() - timedelta(days=7 - i)
+                db.session.add(LarvaeData(
+                    tray_number=2,
+                    length=round(uniform(12, 22), 1),
+                    width=round(uniform(2.5, 4.5), 1),
+                    area=round(uniform(25, 90), 1),
+                    weight=round(uniform(95, 160), 1),
+                    count=randint(80, 400),
+                    timestamp=timestamp
+                ))
+
+            # Add data for tray 3
+            for i in range(1, 12):
+                timestamp = datetime.utcnow() - timedelta(days=11 - i)
+                db.session.add(LarvaeData(
+                    tray_number=3,
+                    length=round(uniform(9, 18), 1),
+                    width=round(uniform(1.8, 3.8), 1),
+                    area=round(uniform(18, 70), 1),
+                    weight=round(uniform(85, 145), 1),
+                    count=randint(120, 600),
+                    timestamp=timestamp
+                ))
+
+            # Add dummy data for new trays (e.g., 156, 256, 356) to ensure they appear
+            for tray in [156, 256, 356]:
+                for i in range(1, 7):
+                    timestamp = datetime.utcnow() - timedelta(days=6 - i)
+                    db.session.add(LarvaeData(
+                        tray_number=tray,
+                        length=round(uniform(15, 25), 1),
+                        width=round(uniform(3, 5), 1),
+                        area=round(uniform(30, 100), 1),
+                        weight=round(uniform(100, 180), 1),
+                        count=randint(150, 700),
+                        timestamp=timestamp
+                    ))
+            db.session.commit()
+            print("Dummy data added for demonstration including new trays.")
 
     # Start MQTT subscriber in a separate thread
     mqtt_thread = threading.Thread(target=run_mqtt_subscriber)
-    mqtt_thread.daemon = True  # Allows the main program to exit even if the thread is still running
+    mqtt_thread.daemon = True # Allows the main program to exit even if the thread is still running
     mqtt_thread.start()
     print("MQTT subscriber thread started.")
 
@@ -573,5 +533,4 @@ if __name__ == '__main__':
     print("Starting Flask application...")
     # use_reloader=False is important to prevent the MQTT thread from being started twice
     # when Flask's debug mode is active.
-    app.run(host='0.0.0.0', port=8000, debug=False, use_reloader=False)
-
+    app.run(host='0.0.0.0', port=8000, debug=True, use_reloader=False)
