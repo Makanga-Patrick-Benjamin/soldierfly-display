@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -6,6 +6,10 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 import os
 import threading # For running MQTT in a separate thread
+import base64
+from PIL import Image
+from io import BytesIO
+from random import uniform, randint
 
 # MQTT specific imports
 import paho.mqtt.client as mqtt
@@ -13,11 +17,16 @@ import json
 import time # Although not heavily used, keep it if needed for future sleep operations
 
 # --- Flask App Configuration ---
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 app.secret_key = os.urandom(24)
 # Ensure this path matches the database path both parts will write to
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///larvae_monitoring.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Path to store images
+IMAGE_STORAGE_DIR = 'static/images'
+if not os.path.exists(IMAGE_STORAGE_DIR):
+    os.makedirs(IMAGE_STORAGE_DIR)
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
@@ -35,6 +44,19 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+class ImageFile(db.Model):
+    __tablename__ = "image_files"
+    id = db.Column(db.Integer, primary_key=True)
+    tray_number = db.Column(db.Integer, nullable=False)
+    file_path = db.Column(db.String(255), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    avg_length = db.Column(db.Float, nullable=True)
+    avg_weight = db.Column(db.Float, nullable=True)
+    count = db.Column(db.Integer, nullable=True)
+    # New fields to store classification data
+    bounding_boxes = db.Column(db.String, nullable=True) # Stored as JSON string
+    masks = db.Column(db.String, nullable=True) # Stored as JSON string
 
 class LarvaeData(db.Model):
     # Explicitly set table name for consistency, matching the original mqtt_subscriber.py's table name
@@ -190,6 +212,41 @@ def get_tray_data(tray_number):
     except Exception as e:
         app.logger.error(f"Error fetching tray data for tray {tray_number}: {e}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/images/<tray_number>')
+@login_required
+def get_images(tray_number):
+    try:
+        if 'json' not in globals():
+            import json
+            
+        if tray_number == 'all':
+            images = ImageFile.query.order_by(ImageFile.timestamp.desc()).all()
+        else:
+            images = ImageFile.query.filter_by(tray_number=int(tray_number)).order_by(ImageFile.timestamp.desc()).all()
+        image_list = []
+        for img in images: 
+            image_list.append({
+                "tray": img.tray_number,
+                "src": url_for('get_image_file', filename=os.path.basename(img.file_path)),
+                "timestamp": img.timestamp.isoformat(),
+                "count": img.count,
+                "avgLength": img.avg_length,
+                "avgWeight": img.avg_weight,
+                "bounding_boxes": json.loads(img.bounding_boxes) if img.bounding_boxes else [],
+                "masks": json.loads(img.masks) if img.masks else []
+            })
+        return jsonify(image_list)
+    except Exception as e:
+        print(f"Error fetching images: {e}")
+        return jsonify([])
+    
+# Route to serve the actual image files from the storage directory
+@app.route('/images/<path:filename>')
+def get_image_file(filename):
+    """Serve images from the IMAGE_STORAGE_DIR."""
+    # Ensure the path is secure and valid
+    return send_file(os.path.join(IMAGE_STORAGE_DIR, filename), mimetype='image/jpeg')
 
 @app.route('/get_combined_tray_data')
 @login_required
@@ -397,9 +454,25 @@ def on_connect(client, userdata, flags, rc, properties):
 
 def on_message(client, userdata, msg):
     """Callback function for when an MQTT message is received."""
-    print(f"Received message on topic '{msg.topic}': {msg.payload.decode()}")
+    print(f"Received message on topic {msg.topic}")
     try:
-        payload = json.loads(msg.payload.decode())
+        data = json.loads(msg.payload.decode('utf-8'))
+
+        # Extract relevant fields from the incoming data
+        bounding_boxes = data.get("bounding_boxes")
+        masks = data.get("masks")
+
+        image_data_base64 = data.get("image_data_base64")
+        timestamp_str = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        image_filename = f"tray_{tray_number}_{timestamp_str}.jpg"
+        image_path = os.path.join(IMAGE_STORAGE_DIR, image_filename)
+        
+        # Decode and save the image file
+        if image_data_base64:
+            image_bytes = base64.b64decode(image_data_base64)
+            with open(image_path, 'wb') as f:
+                f.write(image_bytes)
+            print(f"Image saved to {image_path}")
 
         # Validate incoming data (basic check, more robust validation could be added)
         required_keys = ["tray_number", "length", "width", "area", "weight", "count"]
@@ -419,6 +492,18 @@ def on_message(client, userdata, msg):
                     count=payload["count"],
                     timestamp=datetime.utcnow() # Use current UTC time for consistency
                 )
+                
+                new_image_file = ImageFile(
+                tray_number=tray_number,
+                file_path=image_path,
+                avg_length=avg_length,
+                avg_weight=avg_weight,
+                count=larvae_count,
+                # Store bounding boxes and masks as JSON strings
+                bounding_boxes=json.dumps(bounding_boxes) if bounding_boxes else None,
+                masks=json.dumps(masks) if masks else None
+                )
+                db.session.add(new_image_file)
                 db.session.add(new_entry)
                 db.session.commit()
                 print(f"Successfully stored data for Tray {new_entry.tray_number}, ID: {new_entry.id}")
@@ -449,6 +534,56 @@ def run_mqtt_subscriber():
         print(f"Failed to connect to MQTT broker or loop error: {e}")
     finally:
         print("MQTT subscriber stopped.")
+
+@app.route('/api/upload', methods=['POST'])
+@login_required # Ensure only authenticated users can upload images
+def upload_image():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        image_data = data.get('image_data')
+        tray_number = data.get('tray_number')
+        count = data.get('count')
+        avg_length = data.get('avg_length')
+        avg_weight = data.get('avg_weight')
+        bounding_boxes_json = data.get('bounding_boxes')
+        masks_json = data.get('masks')
+        
+        if not image_data or not tray_number:
+            return jsonify({"error": "Missing image data or tray number"}), 400
+
+        # Decode the base64 image
+        image_binary = base64.b64decode(image_data)
+        
+        # Create a unique filename for the image
+        filename = f"tray_{tray_number}_{int(time.time())}.jpeg"
+        file_path = os.path.join(IMAGE_STORAGE_DIR, filename)
+
+        # Save the image file
+        img = Image.open(BytesIO(image_binary))
+        img.save(file_path, 'JPEG')
+        
+        # Create a new ImageFile entry in the database
+        new_image = ImageFile(
+            file_path=file_path,
+            tray_number=tray_number,
+            count=count,
+            avg_length=avg_length,
+            avg_weight=avg_weight,
+            bounding_boxes=bounding_boxes_json,
+            masks=masks_json
+        )
+        db.session.add(new_image)
+        db.session.commit()
+        
+        return jsonify({"message": "Image and data uploaded successfully"}), 200
+
+    except Exception as e:
+        print(f"Error during image upload: {e}")
+        db.session.rollback() # Rollback the session in case of error
+        return jsonify({"error": "Internal server error"}), 500
 
 # --- Main Execution Block ---
 if __name__ == '__main__':
