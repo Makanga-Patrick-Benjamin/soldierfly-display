@@ -2,7 +2,7 @@
 
 A web-based dashboard for real-time monitoring of soldier fly larvae growth metrics across multiple trays, built with Flask and SQLite.
 
-![Dashboard Preview](https://soldierfly-fly-monitor.onrender.com) *Dashboard layout*
+![https://soldierfly-fly-monitor.onrender.com](https://soldierfly-fly-monitor.onrender.com) *Dashboard layout*
 
 ## Features
 
