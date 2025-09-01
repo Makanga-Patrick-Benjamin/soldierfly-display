@@ -50,9 +50,14 @@ A web-based dashboard for real-time monitoring of soldier fly larvae growth metr
 3. **Requiremets installation**:
 ```bash
     pip install -r requirements.txt
-    python3 BSFwebdashboard,py
 ```
-4. **Access Application:**
+
+4.  Execute the Script:
+```bash
+   python3 BSFwebdashboard.py
+```
+
+5. **Access Application:**
 - http://localhost:8000
 
 ## 3. **Default credentials:**
