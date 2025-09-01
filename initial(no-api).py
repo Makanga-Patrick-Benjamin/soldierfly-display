@@ -11,7 +11,8 @@ import os
 import threading # For running MQTT in a separate thread
 
 # MQTT specific imports
-import paho.mqtt.client as mqttfrom flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash
+import paho.mqtt.client as mqtt
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
