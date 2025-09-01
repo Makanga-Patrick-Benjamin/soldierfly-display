@@ -2,23 +2,26 @@
 
 A web-based dashboard for real-time monitoring of soldier fly larvae growth metrics across multiple trays, built with Flask and SQLite.
 
-![Dashboard Preview](https://via.placeholder.com/800x400.png?text=Dashboard+Preview) *Example dashboard layout*
+![Dashboard Preview](https://soldierfly-fly-monitor.onrender.com) *Dashboard layout*
 
 ## Features
 
-- **Multi-Tray Monitoring**: Track 3 trays simultaneously
+- **Multi-Tray Monitoring**: Track multi trays simultaneously
 - **Real-Time Metrics**:
   - Average length, width, area, and weight
   - Total larvae count
 - **Data Visualization**:
-  - Growth trend charts (10-day history)
-  - Weight distribution histograms
+  - Growth trend charts (30-day history)
+  - Weight distribution Density plot
 - **User Authentication**:
   - Secure login/registration
   - Session management
 - **API Integration**:
   - RESTful endpoints for data ingestion
   - JSON data format support
+- **Image display**:
+  - Classified images for evidence purposes
+
 
 ## Technologies
 
@@ -30,21 +33,26 @@ A web-based dashboard for real-time monitoring of soldier fly larvae growth metr
 ## Installation
 
 1. **Clone Repository**:
-   ```bash
-   git clone https://github.com/Makanga-Patrick-Benjamin/soldierfly-display.git
-   cd soldierfly-display
-   pip install -r requirements.txt
+```bash
+    git clone https://github.com/Makanga-Patrick-Benjamin/soldierfly-display.git
+    cd soldierfly-display
+```
 
-2. **Activate your virtual environment**:
+2. **Activate your virtual environment. this can be for venv or conda**:
 ```bash
-    python3 -m venv venv #for python venv environment
-    source venv/bin/activate
-    python3 BSFwebdashboard.py 
+    python3 -m venv myenv #for python venv environment
+    source myenv/bin/activate
 ```
 ```bash
-    conda activate virtual environment
+    conda create --name myenv #for conda environment
+    conda activate "myenv"
 ```
-3. **Access Application:**
+3. **Requiremets installation**:
+```bash
+    pip install -r requirements.txt
+    python3 BSFwebdashboard,py
+```
+4. **Access Application:**
 - http://localhost:8000
 
 ## 3. **Default credentials:**
