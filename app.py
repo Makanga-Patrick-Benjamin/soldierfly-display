@@ -6,11 +6,10 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 import os
 import threading # For running MQTT in a separate thread
-
-# MQTT specific imports
 import paho.mqtt.client as mqtt
 import json
 import time # Although not heavily used, keep it if needed for future sleep operations
+from random import uniform, randint
 
 # --- Flask App Configuration ---
 app = Flask(__name__)
@@ -55,6 +54,40 @@ class LarvaeData(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@app.route('/api/sensor', methods=['POST'])
+def receive_sensor_data():
+    """
+    Receives JSON data from the sensor script and saves it to the database.
+    """
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "No JSON data received"}), 400
+
+        # Validate required fields
+        required_fields = ["tray_number", "length", "width", "area", "weight", "count", "timestamp"]
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing one or more required fields"}), 400
+
+        new_larvae_entry = LarvaeData(
+            tray_number=data['tray_number'],
+            length=data['length'],
+            width=data['width'],
+            area=data['area'],
+            weight=data['weight'],
+            count=data['count'],
+            timestamp=datetime.fromisoformat(data['timestamp'])
+        )
+        db.session.add(new_larvae_entry)
+        db.session.commit()
+        
+        print(f"Received and saved data for Tray {data['tray_number']}")
+        return jsonify({"message": "Data received and saved successfully"}), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error receiving or saving data: {e}")
+        return jsonify({"error": "An unexpected error occurred"}), 500
+
 # --- Helper Functions (From app.py) ---
 def get_latest_tray_data(tray_number):
     """Fetches the most recent larvae data entry for a specific tray."""
@@ -94,7 +127,7 @@ def login():
             login_user(user)
             flash('Login successful!', 'success')
             return redirect(url_for('dashboard'))
-        flash('Invalid username or password', 'danger')
+        flash('Invalid username or password', 'retry')
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -437,18 +470,19 @@ def on_message(client, userdata, msg):
 
 # --- MQTT Thread Function ---
 def run_mqtt_subscriber():
-    """Initializes and runs the MQTT client in a separate thread."""
-    mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2) # Specify API version
-    mqtt_client.on_connect = on_connect
-    mqtt_client.on_message = on_message
+    # """Initializes and runs the MQTT client in a separate thread."""
+    # mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2) # Specify API version
+    # mqtt_client.on_connect = on_connect
+    # mqtt_client.on_message = on_message
 
-    try:
-        mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
-        mqtt_client.loop_forever() # Blocks and handles reconnections
-    except Exception as e:
-        print(f"Failed to connect to MQTT broker or loop error: {e}")
-    finally:
-        print("MQTT subscriber stopped.")
+    # try:
+    #     mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+    #     mqtt_client.loop_forever() # Blocks and handles reconnections
+    # except Exception as e:
+    #     print(f"Failed to connect to MQTT broker or loop error: {e}")
+    # finally:
+    #     print("MQTT subscriber stopped.")
+    pass
 
 # --- Main Execution Block ---
 if __name__ == '__main__':
@@ -462,66 +496,6 @@ if __name__ == '__main__':
             db.session.add(admin_user)
             db.session.commit()
             print("Test user 'testuser' with password 'password' created.")
-
-        # Optional: Add some dummy data for new trays if the database is empty
-        if not LarvaeData.query.first():
-            print("Adding dummy data for demonstration.")
-            from random import uniform, randint
-
-            # Add data for tray 1
-            for i in range(1, 10):
-                timestamp = datetime.utcnow() - timedelta(days=9 - i)
-                db.session.add(LarvaeData(
-                    tray_number=1,
-                    length=round(uniform(10, 20), 1),
-                    width=round(uniform(2, 4), 1),
-                    area=round(uniform(20, 80), 1),
-                    weight=round(uniform(90, 150), 1),
-                    count=randint(100, 500),
-                    timestamp=timestamp
-                ))
-
-            # Add data for tray 2
-            for i in range(1, 8):
-                timestamp = datetime.utcnow() - timedelta(days=7 - i)
-                db.session.add(LarvaeData(
-                    tray_number=2,
-                    length=round(uniform(12, 22), 1),
-                    width=round(uniform(2.5, 4.5), 1),
-                    area=round(uniform(25, 90), 1),
-                    weight=round(uniform(95, 160), 1),
-                    count=randint(80, 400),
-                    timestamp=timestamp
-                ))
-
-            # Add data for tray 3
-            for i in range(1, 12):
-                timestamp = datetime.utcnow() - timedelta(days=11 - i)
-                db.session.add(LarvaeData(
-                    tray_number=3,
-                    length=round(uniform(9, 18), 1),
-                    width=round(uniform(1.8, 3.8), 1),
-                    area=round(uniform(18, 70), 1),
-                    weight=round(uniform(85, 145), 1),
-                    count=randint(120, 600),
-                    timestamp=timestamp
-                ))
-
-            # Add dummy data for new trays (e.g., 156, 256, 356) to ensure they appear
-            for tray in [156, 256, 356]:
-                for i in range(1, 7):
-                    timestamp = datetime.utcnow() - timedelta(days=6 - i)
-                    db.session.add(LarvaeData(
-                        tray_number=tray,
-                        length=round(uniform(15, 25), 1),
-                        width=round(uniform(3, 5), 1),
-                        area=round(uniform(30, 100), 1),
-                        weight=round(uniform(100, 180), 1),
-                        count=randint(150, 700),
-                        timestamp=timestamp
-                    ))
-            db.session.commit()
-            print("Dummy data added for demonstration including new trays.")
 
     # Start MQTT subscriber in a separate thread
     mqtt_thread = threading.Thread(target=run_mqtt_subscriber)
