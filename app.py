@@ -54,10 +54,10 @@ class LarvaeData(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-@app.route('/api/sensor', methods=['POST'])
-def receive_sensor_data():
+@app.route('/api/larvae_data', methods=['POST'])
+def receive_larvae_data():
     """
-    Receives JSON data from the sensor script and saves it to the database.
+    Receives JSON data from the larvae monitoring script and saves it to the database.
     """
     try:
         data = request.json
