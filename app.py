@@ -36,7 +36,6 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
 class LarvaeData(db.Model):
-    # Explicitly set table name for consistency, matching the original mqtt_subscriber.py's table name
     __tablename__ = "larvae_data"
     id = db.Column(db.Integer, primary_key=True)
     tray_number = db.Column(db.Integer, nullable=False)
@@ -45,10 +44,10 @@ class LarvaeData(db.Model):
     area = db.Column(db.Float, nullable=False)
     weight = db.Column(db.Float, nullable=False)
     count = db.Column(db.Integer, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     def __repr__(self):
-        return f"<LarvaeData Tray {self.tray_number} - {self.timestamp}>"
+        return f"<LarvaData Tray {self.tray_number}: Count={self.count} at {self.timestamp}>"
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -418,6 +417,8 @@ MQTT_BROKER = "broker.hivemq.com"
 MQTT_PORT = 1883
 MQTT_TOPIC = "bsf_monitor/larvae_data" # IMPORTANT: This MUST match the topic in your data publisher!
 
+mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+
 # --- MQTT Callbacks (Modified to use Flask-SQLAlchemy's db.session) ---
 def on_connect(client, userdata, flags, rc, properties):
     """Callback function for when the MQTT client connects to the broker."""
@@ -429,74 +430,57 @@ def on_connect(client, userdata, flags, rc, properties):
         print(f"Failed to connect, return code {rc}\n")
 
 def on_message(client, userdata, msg):
-    """Callback function for when an MQTT message is received."""
-    print(f"Received message on topic '{msg.topic}': {msg.payload.decode()}")
-    try:
-        payload = json.loads(msg.payload.decode())
+    """Callback function for when a message is received from the broker."""
+    # Process the message only if it's on the expected topic
+    if msg.topic == MQTT_TOPIC:
+        try:
+            payload = json.loads(msg.payload.decode())
+            print(f"Received data: {payload}")
 
-        # Validate incoming data (basic check, more robust validation could be added)
-        required_keys = ["tray_number", "length", "width", "area", "weight", "count"]
-        if not all(key in payload for key in required_keys):
-            print("Error: Received payload is missing required keys.")
-            return
-
-        # Use Flask's app context to interact with the database in the MQTT thread
-        with app.app_context():
-            try:
-                new_entry = LarvaeData(
-                    tray_number=payload["tray_number"],
-                    length=payload["length"],
-                    width=payload["width"],
-                    area=payload["area"],
-                    weight=payload["weight"],
-                    count=payload["count"],
-                    timestamp=datetime.utcnow() # Use current UTC time for consistency
+            # Push a new application context for this thread
+            # This is CRITICAL for using the database within a separate thread
+            with app.app_context():
+                # Create a new LarvaData instance and save it to the database
+                new_data = LarvaeData(
+                    tray_number=payload.get("tray_number"),
+                    length=payload.get("length"),
+                    width=payload.get("width"),
+                    area=payload.get("area"),
+                    weight=payload.get("weight"),
+                    count=payload.get("count"),
+                    timestamp=datetime.utcnow()
                 )
-                db.session.add(new_entry)
+                db.session.add(new_data)
                 db.session.commit()
-                print(f"Successfully stored data for Tray {new_entry.tray_number}, ID: {new_entry.id}")
-            except Exception as e:
-                db.session.rollback() # Rollback the transaction on error
-                print(f"Error storing data to database: {e}")
-            finally:
-                # Ensure the session is removed after each message processing.
-                # This is crucial for thread safety with Flask-SQLAlchemy's scoped sessions.
-                db.session.remove()
+                print("Data saved to database.")
 
-    except json.JSONDecodeError:
-        print(f"Error: Could not decode JSON from message: {msg.payload.decode()}")
-    except Exception as e:
-        print(f"An unexpected error occurred in on_message: {e}")
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON payload: {e}")
+        except Exception as e:
+            print(f"An error occurred while processing MQTT message: {e}")
+            db.session.rollback() # Rollback the session on error
 
 # --- MQTT Thread Function ---
 def run_mqtt_subscriber():
-    # """Initializes and runs the MQTT client in a separate thread."""
-    # mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2) # Specify API version
-    # mqtt_client.on_connect = on_connect
-    # mqtt_client.on_message = on_message
+    # Assign the callbacks
+    mqtt_client.on_connect = on_connect
+    mqtt_client.on_message = on_message
 
-    # try:
-    #     mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
-    #     mqtt_client.loop_forever() # Blocks and handles reconnections
-    # except Exception as e:
-    #     print(f"Failed to connect to MQTT broker or loop error: {e}")
-    # finally:
-    #     print("MQTT subscriber stopped.")
-    pass
+    # Start the client loop
+    try:
+        mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        mqtt_client.loop_forever() # This is a blocking call
+    except Exception as e:
+        print(f"Failed to connect to MQTT broker or loop error: {e}")
+    finally:
+        print("MQTT subscriber stopped.")
 
 # --- Main Execution Block ---
 if __name__ == '__main__':
     # Initialize database and add dummy data within Flask app context
     with app.app_context():
         db.create_all() # Creates tables if they don't exist
-        # Create test user if none exists
-        if not User.query.filter_by(username='testuser').first():
-            admin_user = User(username='testuser')
-            admin_user.set_password('password')
-            db.session.add(admin_user)
-            db.session.commit()
-            print("Test user 'testuser' with password 'password' created.")
-
+        
     # Start MQTT subscriber in a separate thread
     mqtt_thread = threading.Thread(target=run_mqtt_subscriber)
     mqtt_thread.daemon = True # Allows the main program to exit even if the thread is still running
