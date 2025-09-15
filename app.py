@@ -475,20 +475,20 @@ def run_mqtt_subscriber():
     finally:
         print("MQTT subscriber stopped.")
 
+# This block will run on Render and locally
+# It starts the MQTT subscriber thread immediately after the app is created
+print("Starting MQTT subscriber thread...")
+mqtt_thread = threading.Thread(target=run_mqtt_subscriber)
+mqtt_thread.daemon = True
+mqtt_thread.start()
+print("MQTT subscriber thread started.")
+
+# Initialize database and add dummy data within Flask app context
+with app.app_context():
+    db.create_all() # Creates tables if they don't exist
+
 # --- Main Execution Block ---
 if __name__ == '__main__':
-    # Initialize database and add dummy data within Flask app context
-    with app.app_context():
-        db.create_all() # Creates tables if they don't exist
-        
-    # Start MQTT subscriber in a separate thread
-    mqtt_thread = threading.Thread(target=run_mqtt_subscriber)
-    mqtt_thread.daemon = True # Allows the main program to exit even if the thread is still running
-    mqtt_thread.start()
-    print("MQTT subscriber thread started.")
-
-    # Start Flask app in the main thread
     print("Starting Flask application...")
-    # use_reloader=False is important to prevent the MQTT thread from being started twice
-    # when Flask's debug mode is active.
+
     app.run(host='0.0.0.0', port=8000, debug=True, use_reloader=False)
